@@ -2,7 +2,7 @@
 
 > 比特币上市矿企数据追踪平台 · 数据来源于 SEC 财报
 
-**[🌐 访问网站](https://nonce-mining-data.vercel.app)** · **[📊 Nonce.app](https://nonce.app)**
+**[🌐 访问网站](https://nonce-miner-data.vercel.app/)** · **[📊 Nonce.app](https://nonce.app)**
 
 ---
 
