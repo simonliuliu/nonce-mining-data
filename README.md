@@ -1,145 +1,126 @@
-# Nonce Mining Data v3 — SEO-First Bitcoin Mining Database
+# ⛏ Nonce Mining Data
 
-A data website that tracks financial and operational metrics for public Bitcoin mining companies. Built with Next.js + Notion as backend CMS. Designed for SEO from the ground up — every data page is an explainable, indexable page.
+> 比特币上市矿企数据追踪平台 · 数据来源于 SEC 财报
 
-## Architecture
+**[🌐 访问网站](https://nonce-mining-data.vercel.app)** · **[📊 Nonce.app](https://nonce.app)**
 
-```
-Notion (6 databases)          Next.js (SSG + ISR)           Vercel CDN
-┌──────────────────┐          ┌──────────────────┐          ┌─────────┐
-│ 季度表           │──────▶  │ /                │──────▶  │ Global  │
-│ 年度公司表       │──────▶  │ /company/MARA    │          │ Edge    │
-│ SEO Articles     │──────▶  │ /rankings/...    │          │ < 100ms │
-│ Company Profiles │──────▶  │ /metrics/...     │          │         │
-│ Metrics Glossary │──────▶  │ /methodology     │          │         │
-│ FAQ              │──────▶  │ /faq             │          │         │
-└──────────────────┘          └──────────────────┘          └─────────┘
-      你在这里编辑               自动构建                    用户访问
-```
+---
 
-## Quick Start（5 分钟）
+## 简介
 
-### 1. 安装 Node.js
-确认已安装 Node.js 18+：
+Nonce Mining Data 是一个专注于**上市比特币矿企**的数据分析网站，帮助矿业从业者和投资者系统追踪和对比主要矿企的运营与财务数据。
+
+所有数据直接来源于 SEC 10-Q / 10-K 季报和年报、公司官方 IR 披露，以及月度挖矿报告。原始数据与推算数据均明确标注。
+
+---
+
+## 功能亮点
+
+| 功能 | 说明 |
+|---|---|
+| 📈 **实时排行榜** | 按 BTC 产量、算力、持仓、成本、收入、效率 6 个维度对比所有矿企 |
+| 🏢 **公司详情页** | 每家矿企的完整数据画像：图表、季度历史数据、Methodology、FAQ |
+| ⚖️ **灵活对比** | 任意选择两家公司进行多维度横向对比 |
+| 📖 **指标释义** | 8 个核心指标的定义、解读方法、常见误区，帮助用户读懂矿企数据 |
+| 🔍 **SEO 友好** | 服务端渲染，结构化数据，完整 sitemap，针对矿企相关搜索词优化 |
+| 📝 **研究文章** | 矿企分析、行业报告、数据解读，内容通过 Notion 管理 |
+
+---
+
+## 覆盖公司
+
+| 公司 | 股票代码 | 交易所 |
+|---|---|---|
+| Marathon Digital Holdings | MARA | NASDAQ |
+| CleanSpark | CLSK | NASDAQ |
+| Bitdeer Technologies | BTDR | NASDAQ |
+| Cango Inc. | CANG | NYSE |
+
+> 持续扩展中，欢迎通过 Issue 提交希望覆盖的矿企。
+
+---
+
+## 追踪指标
+
+- **BTC 产量** — 季度自挖 BTC 数量
+- **算力** — 运营算力（EH/s）
+- **BTC 持仓** — 资产负债表 BTC 持有量
+- **现金单币成本** — 挖出 1 枚 BTC 的直接现金成本
+- **全成本单币成本** — 含折旧和管理费用的完整成本
+- **电力规模** — 合同电力容量（MW）
+- **机队能耗比** — 能效指标（J/TH）
+- **收入 / 毛利润 / 净利润** — 财务数据
+
+---
+
+## 技术栈
+
+| 层级 | 技术 |
+|---|---|
+| 前端框架 | Next.js 14 (App Router) |
+| 内容管理 | Notion API |
+| 数据来源 | SEC EDGAR / 公司官方 IR |
+| 图表 | Recharts |
+| 部署 | Vercel |
+| 样式 | CSS Variables (Dark Theme) |
+
+---
+
+## 本地开发
+
+**环境要求：** Node.js 18+
+
 ```bash
-node --version   # 应该显示 v18.x 或更高
-```
-没有的话去 https://nodejs.org/ 下载 LTS 版本。
+# 1. 克隆项目
+git clone https://github.com/simonliuliu/nonce-mining-data.git
+cd nonce-mining-data
 
-### 2. 创建 Notion Integration
-1. 打开 https://www.notion.so/profile/integrations
-2. 点 "New integration" → 名称填 `Mining Data Website` → Submit
-3. 复制 Internal Integration Secret（`ntn_` 开头）
-
-### 3. 授权数据库
-在 Notion 中，打开以下 6 个数据库，每个都点 `•••` → Connections → 连接你的 Integration：
-
-| 数据库 | 用途 |
-|--------|------|
-| 季度表 | 季度运营+财务数据 |
-| 比特币挖矿公司数据表 - 2025 | 年度全公司数据 |
-| SEO Articles | 文章内容 |
-| Company Profiles | 公司简介+方法论+FAQ |
-| Metrics Glossary | 指标释义 |
-| FAQ | 问答 |
-
-### 4. 配置环境变量
-```bash
-cp .env.example .env.local
-```
-编辑 `.env.local`，把 `NOTION_API_KEY=ntn_你的密钥粘贴在这里` 替换为真实密钥。其余 6 个数据库 ID 已预填好。
-
-### 5. 安装 + 启动
-```bash
+# 2. 安装依赖
 npm install
+
+# 3. 配置环境变量
+cp .env.example .env.local
+# 编辑 .env.local，填入 Notion API Key 和各数据库 ID
+
+# 4. 启动开发服务器
 npm run dev
+
+# 访问 http://localhost:3000
 ```
-打开 http://localhost:3000
 
 ---
 
-## 页面结构
+## 环境变量
 
-### 第一层：核心商业页面
-| 路由 | 说明 |
-|------|------|
-| `/` | 首页 — 网站定位 + 公司快览 + 排行入口 |
-| `/company/[ticker]` | 公司详情 — Profile + 图表 + Methodology + FAQ + 数据表 |
-| `/rankings/[metric]` | 排行页 — 指标解释 + 排名表格（production/hashrate/holdings/cost/revenue/efficiency） |
-
-### 第二层：解释型页面
-| 路由 | 说明 |
-|------|------|
-| `/metrics/[slug]` | 指标释义 — 定义、重要性、使用方法、常见误区 |
-| `/methodology` | 方法论 — 数据来源、口径、更新规则 |
-
-### 第三层：问题型页面
-| 路由 | 说明 |
-|------|------|
-| `/faq` | FAQ — 结构化问答，带 JSON-LD schema markup |
-
-### 第四层：内容页面
-| 路由 | 说明 |
-|------|------|
-| `/articles` | 文章列表 |
-| `/articles/[slug]` | 文章详情 |
-
----
-
-## 日常维护
-
-### 更新季度数据
-在 Notion「季度表」中新增/修改行 → 网站 1 小时内自动同步。
-
-### 修改公司简介或方法论
-在 Notion「Company Profiles」中编辑对应公司的页面正文 → 自动同步。
-页面正文格式：第一个 `---` 分割线之前是 Methodology，之后是 FAQ。
-
-### 新增指标释义
-在 Notion「Metrics Glossary」中新增条目，填写 Slug 和正文内容，Status 设为 Published。
-
-### 新增 FAQ
-在 Notion「FAQ」数据库中新增条目，Answer 写在页面正文中，Status 设为 Published。
-
-### 发布文章
-在 Notion「SEO Articles」中写文章，填 Slug + Status = Published。
-
-### 新增公司
-1. 在「季度表」添加该公司的季度数据
-2. 在「Company Profiles」添加该公司的 Profile（简介、业务模式、方法论、FAQ）
-3. 在 `lib/notion.js` 的 `NAME_MAP` 和 `TICKER_MAP` 中添加名称映射
-4. 在 `lib/helpers.js` 的 `COMPANIES`、`TICKERS`、`COLORS` 中添加
-
----
-
-## 部署到 Vercel
-
-1. `git init && git add -A && git commit -m "v3"`
-2. 推送到 GitHub
-3. 打开 https://vercel.com → Import → 选你的仓库
-4. Environment Variables 中添加 `.env.local` 里的 7 个变量
-5. Deploy
-
----
-
-## 项目文件说明
+在 `.env.local` 中配置以下变量（参考 `.env.example`）：
 
 ```
-├── .env.example              # 环境变量模板（6 个数据库 ID）
-├── app/
-│   ├── layout.js             # 全局布局 + 导航
-│   ├── globals.css           # 全局样式
-│   ├── page.js               # 首页（SEO 定位页）
-│   ├── company/[ticker]/     # 公司详情（最高 SEO 价值）
-│   ├── rankings/[metric]/    # 排行页（6 个指标）
-│   ├── metrics/[slug]/       # 指标释义（10 个）
-│   ├── methodology/          # 方法论
-│   ├── faq/                  # FAQ（带 JSON-LD）
-│   └── articles/             # 文章
-├── components/
-│   └── Charts.js             # Recharts 图表（6 种）
-├── lib/
-│   ├── notion.js             # Notion API（6 个数据库）
-│   └── helpers.js            # 数据计算 + 排行配置
-└── package.json
+NOTION_API_KEY=          # Notion Integration Secret
+NOTION_QUARTERLY_DB=     # 季度数据表 ID
+NOTION_COMPANY_DB=       # 公司年度数据表 ID
+NOTION_SEO_DB=           # SEO 文章数据库 ID
+NOTION_PROFILES_DB=      # 公司 Profile 数据库 ID
+NOTION_METRICS_DB=       # 指标释义数据库 ID
+NOTION_FAQ_DB=           # FAQ 数据库 ID
 ```
+
+---
+
+## 数据说明
+
+- 所有数据优先使用 **SEC 官方财报原始数据**
+- 推算数据会在页面上明确标注「Estimated」
+- 数据按季度更新，通常在季报发布后 1-2 周内同步
+- 详细口径说明见网站 [Methodology 页面](/methodology)
+
+---
+
+## 关联产品
+
+本站是 **[Nonce.app](https://nonce.app)** 的数据展示层。Nonce.app 提供实时挖矿数据追踪、告警和投资组合管理功能。
+
+---
+
+## License
+
+MIT License · © 2025 Nonce
