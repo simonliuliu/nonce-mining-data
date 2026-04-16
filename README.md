@@ -114,13 +114,3 @@ NOTION_FAQ_DB=           # FAQ 数据库 ID
 - 详细口径说明见网站 [Methodology 页面](/methodology)
 
 ---
-
-## 关联产品
-
-本站是 **[Nonce.app](https://nonce.app)** 的数据展示层。Nonce.app 提供实时挖矿数据追踪、告警和投资组合管理功能。
-
----
-
-## License
-
-MIT License · © 2025 Nonce
