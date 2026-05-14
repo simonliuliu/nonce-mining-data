@@ -318,31 +318,16 @@ export default function RankingClient({
       {/* Page header */}
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6, letterSpacing: "-0.02em" }}>{meta.fullTitle}</h1>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <p style={{ fontSize: 13, color: "var(--text3)", margin: 0 }}>{meta.desc}</p>
-          {/* SEO 内链：引导用户了解指标定义，同时增强方法论页面的内部链接权重 */}
+        <p style={{ fontSize: 13, color: "var(--text3)", margin: 0 }}>
+          {meta.desc}
+          {" · "}
           <a
             href={`/${locale}/methodology`}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-              padding: "3px 10px",
-              fontSize: 11,
-              fontWeight: 500,
-              color: "var(--brand)",
-              border: "1px solid var(--brand-mid)",
-              borderRadius: 5,
-              textDecoration: "none",
-              flexShrink: 0,
-              transition: "background 0.15s",
-              background: "var(--brand-dim)",
-              letterSpacing: "0.01em",
-            }}
+            style={{ color: "var(--brand)", textDecoration: "none", fontWeight: 500 }}
           >
             {locale === "zh" ? "阅读方法论 →" : "Read methodology →"}
           </a>
-        </div>
+        </p>
       </div>
 
       {/* Summary cards */}
