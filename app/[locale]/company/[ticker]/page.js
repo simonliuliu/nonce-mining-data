@@ -23,6 +23,29 @@ export async function generateMetadata({ params }) {
   };
 }
 
+// ─── 相关文章过滤辅助 ──────────────────────────────────────────
+// 同时匹配 ticker（BTDR）和公司名（Bitdeer），并按 locale 过滤
+function filterRelatedArticles(articles, ticker, companyName, locale) {
+  const tkUp   = ticker.toUpperCase();
+  const cnUp   = companyName.toUpperCase();
+
+  return articles.filter(a => {
+    // 1. 按 locale 过滤：article.language === locale，或没标 language（兼容旧数据）
+    if (a.language && a.language !== locale) return false;
+
+    // 2. 按 related_company 匹配（同时支持字符串和数组两种 Notion 字段类型）
+    const rc = a.related_company;
+    if (!rc) return false;
+
+    const rcList = Array.isArray(rc) ? rc : [rc];
+    return rcList.some(v => {
+      const upper = String(v).toUpperCase();
+      // 命中任一关键词即可：ticker (BTDR) 或公司名 (BITDEER, BITDEER TECHNOLOGIES 等)
+      return upper.includes(tkUp) || upper.includes(cnUp) || cnUp.includes(upper);
+    });
+  });
+}
+
 export default async function CompanyPage({ params }) {
   const { ticker, locale } = await params;
   const tk      = ticker?.toUpperCase();
@@ -44,17 +67,19 @@ export default async function CompanyPage({ params }) {
   const color  = TICKER_COLORS[tk] || "#F7931A";
   const ts     = buildCompanyTimeseries(allData, company);
 
+  // ★ 关键：传 locale，让 Notion 优先返回中文 profile（如有）
   let profile = null;
   try { profile = await getCompanyProfile(tk, locale); } catch (e) {}
 
-  // ★ FIX: blocksToHtml 是 async 函数，必须 await，否则返回 Promise 导致 .split 报错
   const profileHtml     = profile?.blocks ? await blocksToHtml(profile.blocks) : "";
   const parts           = profileHtml.split("<hr/>");
   const methodologyHtml = parts[0] || "";
   const faqHtml         = parts[1] || "";
 
-  const related = articles.filter(a => a.related_company?.toUpperCase().includes(tk));
-  const peers   = profile?.peers?.split(",").map(p => p.trim()).filter(p => p && p !== tk) || [];
+  // ★★★ 修复后的相关文章过滤 ★★★
+  const related = filterRelatedArticles(articles, tk, company, locale);
+
+  const peers = profile?.peers?.split(",").map(p => p.trim()).filter(p => p && p !== tk) || [];
 
   return (
     <>

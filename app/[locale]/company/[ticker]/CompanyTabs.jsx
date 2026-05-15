@@ -9,10 +9,11 @@ import {
 } from "@/components/Charts";
 import Link from "next/link";
 
-// 数字格式化辅助
-const fmt = v => v == null ? "—" : typeof v === "number" ? v.toLocaleString() : v;
+// ─── 数字格式化 ────────────────────────────────────────────────
+const fmt  = v => v == null ? "—" : typeof v === "number" ? v.toLocaleString() : v;
 const fmtD = v => v == null ? "—" : `$${Number(v).toLocaleString()}`;
 
+// ─── Section label ────────────────────────────────────────────
 function SectionLabel({ children, small, style }) {
   return (
     <div style={{
@@ -29,6 +30,77 @@ function SectionLabel({ children, small, style }) {
   );
 }
 
+// ─── Article card ─────────────────────────────────────────────
+function ArticleCard({ article, locale, color }) {
+  return (
+    <Link
+      href={`/${locale}/articles/${article.slug}`}
+      style={{
+        display: "block",
+        textDecoration: "none",
+        padding: "16px 18px",
+        background: "var(--bg2)",
+        border: "1px solid var(--border)",
+        borderRadius: 10,
+        transition: "border-color 0.15s, transform 0.15s",
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.borderColor = color;
+        e.currentTarget.style.transform = "translateY(-1px)";
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.borderColor = "var(--border)";
+        e.currentTarget.style.transform = "translateY(0)";
+      }}
+    >
+      {article.category && (
+        <div style={{
+          fontSize: 10,
+          fontWeight: 600,
+          color,
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+          marginBottom: 8,
+        }}>
+          {article.category}
+        </div>
+      )}
+      <div style={{
+        fontSize: 14,
+        fontWeight: 600,
+        color: "var(--text)",
+        lineHeight: 1.4,
+        marginBottom: 6,
+      }}>
+        {article.title}
+      </div>
+      {article.meta_description && (
+        <div style={{
+          fontSize: 12,
+          color: "var(--text3)",
+          lineHeight: 1.55,
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+        }}>
+          {article.meta_description}
+        </div>
+      )}
+      {article.publish_date && (
+        <div style={{
+          fontSize: 11,
+          color: "var(--text3)",
+          marginTop: 10,
+        }}>
+          {article.publish_date}
+        </div>
+      )}
+    </Link>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 export default function CompanyTabs({
   ticker,
   color,
@@ -36,8 +108,8 @@ export default function CompanyTabs({
   data,
   latest,
   profile,
-  methodologyHtml,
-  faqHtml,
+  methodologyHtml,  // 仍然接收，但不使用（保持 page.js 兼容）
+  faqHtml,          // 同上
   related,
   peers,
   locale = "en",
@@ -45,11 +117,10 @@ export default function CompanyTabs({
   const t = getT(locale);
   const [active, setActive] = useState("market");
 
-  // 3 个 Tab（去掉了 Filings，因为表格已经放进 Market Data 里了）
+  // 2 个 Tab：Market Data + Company Info（去掉了 Filings 和 FAQ）
   const TABS = [
     { id: "market", label: t("company.tabs.market") },
-    { id: "about",  label: t("company.tabs.about")  },
-    { id: "faq",    label: t("company.tabs.faq")    },
+    { id: "info",   label: t("company.tabs.about")  },  // 文本已在 i18n.js 改为「公司信息」/ "Company Info"
   ];
 
   // Quick facts 字段
@@ -99,7 +170,8 @@ export default function CompanyTabs({
 
       {/* ══════════════════════════════════════
           TAB 1: Market Data
-          包含：Key Metrics + Charts + ★季度历史表格★ + Related Research
+          包含：Key Metrics + Charts + 历史季度数据表格
+          (不再有 Related Research，移到「公司信息」里)
           ══════════════════════════════════════ */}
       {active === "market" && (
         <div style={{ paddingTop: 20 }}>
@@ -158,9 +230,7 @@ export default function CompanyTabs({
             <CompanyEfficiencyChart data={ts} color={color} />
           </div>
 
-          {/* ══════════════════════════════════════
-              ★★★ 季度历史数据表格 — 直接放在图表下方 ★★★
-              ══════════════════════════════════════ */}
+          {/* ★ 历史季度数据表格 — 直接放在图表下方 ★ */}
           <SectionLabel>
             {locale === "zh" ? "📋 历史季度数据" : "📋 Historical Quarterly Data"}
           </SectionLabel>
@@ -198,27 +268,14 @@ export default function CompanyTabs({
                       <td style={{ fontWeight: 500 }}>{r.quarter}</td>
                       <td className="r m">{fmt(r.btc_production)}</td>
                       <td className="r m">{fmt(r.btc_holdings)}</td>
-                      <td className="r m">
-                        {r.hashrate_ehs ? `${r.hashrate_ehs} EH/s` : "—"}
-                      </td>
-                      <td className="r m">
-                        {r.cash_cost_per_btc ? fmtD(r.cash_cost_per_btc) : "—"}
-                      </td>
-                      <td className="r m">
-                        {r.energy_cost_per_btc ? fmtD(r.energy_cost_per_btc) : "—"}
-                      </td>
-                      <td className="r m">
-                        {r.power_capacity_mw ? r.power_capacity_mw.toLocaleString() : "—"}
-                      </td>
+                      <td className="r m">{r.hashrate_ehs ? `${r.hashrate_ehs} EH/s` : "—"}</td>
+                      <td className="r m">{r.cash_cost_per_btc ? fmtD(r.cash_cost_per_btc) : "—"}</td>
+                      <td className="r m">{r.energy_cost_per_btc ? fmtD(r.energy_cost_per_btc) : "—"}</td>
+                      <td className="r m">{r.power_capacity_mw ? r.power_capacity_mw.toLocaleString() : "—"}</td>
                       <td className="r m">{r.efficiency_jth || "—"}</td>
                       <td style={{ fontSize: 12 }}>
                         {r.source_url ? (
-                          <a
-                            href={r.source_url}
-                            target="_blank"
-                            rel="noopener"
-                            style={{ color }}
-                          >
+                          <a href={r.source_url} target="_blank" rel="noopener" style={{ color }}>
                             {sd || r.quarter}
                           </a>
                         ) : (
@@ -235,40 +292,19 @@ export default function CompanyTabs({
           <p style={{ fontSize: 11, color: "var(--text3)", marginTop: 10 }}>
             {t("company.table.updated")}: {latest?.quarter}
           </p>
-
-          {/* Related Research */}
-          {related.length > 0 && (
-            <>
-              <SectionLabel>{t("company.sections.research")}</SectionLabel>
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-                gap: 12,
-              }}>
-                {related.map(a => (
-                  <Link
-                    key={a.slug}
-                    href={`/${locale}/articles/${a.slug}`}
-                    className="article-card"
-                    style={{ textDecoration: "none" }}
-                  >
-                    <div className="article-card-title">{a.title}</div>
-                    {a.meta_description && (
-                      <div className="article-card-desc">{a.meta_description}</div>
-                    )}
-                  </Link>
-                ))}
-              </div>
-            </>
-          )}
         </div>
       )}
 
       {/* ══════════════════════════════════════
-          TAB 2: About
+          TAB 2: Company Info (公司信息)
+          上：公司信息（Overview + Business Model + Quick Facts）
+          下：Related Research（相关研究文章）
+          (去掉了 Data Methodology 部分)
           ══════════════════════════════════════ */}
-      {active === "about" && (
+      {active === "info" && (
         <div style={{ paddingTop: 20 }}>
+
+          {/* 上半部分：公司信息卡片网格 */}
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
@@ -307,7 +343,9 @@ export default function CompanyTabs({
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {quickFacts.map(({ key, label, value, isLink }) => (
                     <div key={key} style={{ display: "flex", gap: 12, fontSize: 13 }}>
-                      <span style={{ color: "var(--text3)", width: 100, flexShrink: 0 }}>{label}</span>
+                      <span style={{ color: "var(--text3)", width: 100, flexShrink: 0 }}>
+                        {label}
+                      </span>
                       {isLink ? (
                         <a href={value} target="_blank" rel="noopener" style={{ color }}>
                           {String(value).replace(/^https?:\/\//, "")}
@@ -322,17 +360,7 @@ export default function CompanyTabs({
             )}
           </div>
 
-          {/* Data Methodology */}
-          {methodologyHtml && (
-            <div className="text-block" style={{ marginTop: 12 }}>
-              <SectionLabel small style={{ margin: "0 0 10px" }}>
-                {t("company.sections.methodology")}
-              </SectionLabel>
-              <div className="prose" dangerouslySetInnerHTML={{ __html: methodologyHtml }} />
-            </div>
-          )}
-
-          {/* Peers */}
+          {/* Peers — 紧凑放在 quick facts 下方 */}
           {peers.length > 0 && (
             <div style={{ marginTop: 16 }}>
               <SectionLabel small style={{ margin: "0 0 10px" }}>
@@ -352,27 +380,34 @@ export default function CompanyTabs({
               </div>
             </div>
           )}
-        </div>
-      )}
 
-      {/* ══════════════════════════════════════
-          TAB 3: FAQ
-          ══════════════════════════════════════ */}
-      {active === "faq" && (
-        <div style={{ paddingTop: 20, maxWidth: 740 }}>
-          {faqHtml ? (
-            <div className="text-block prose">
-              <div dangerouslySetInnerHTML={{ __html: faqHtml }} />
+          {/* ════════════════════════════════════
+              下半部分：Related Research 文章
+              ════════════════════════════════════ */}
+          <SectionLabel>{t("company.sections.research")}</SectionLabel>
+
+          {related.length > 0 ? (
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+              gap: 12,
+            }}>
+              {related.map(a => (
+                <ArticleCard key={a.slug} article={a} locale={locale} color={color} />
+              ))}
             </div>
           ) : (
-            <div className="text-block" style={{ textAlign: "center", padding: "40px 20px" }}>
-              <p style={{ color: "var(--text2)", margin: 0, fontSize: 15 }}>
-                {locale === "zh" ? "暂无 FAQ 内容" : "No FAQ content yet"}
-              </p>
-              <p style={{ fontSize: 12, color: "var(--text3)", marginTop: 8 }}>
+            <div style={{
+              padding: "32px 20px",
+              background: "var(--bg2)",
+              border: "1px dashed var(--border)",
+              borderRadius: 10,
+              textAlign: "center",
+            }}>
+              <p style={{ color: "var(--text3)", fontSize: 13, margin: 0 }}>
                 {locale === "zh"
-                  ? <>在 Notion 该公司 Profile 页面的 <code>---</code> 分隔符之后添加内容即可显示。</>
-                  : <>Add content after the <code>---</code> divider in this company's Notion Profile page.</>
+                  ? "暂无与该公司相关的研究文章。"
+                  : "No related research articles yet."
                 }
               </p>
             </div>
