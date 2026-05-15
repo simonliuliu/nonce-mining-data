@@ -18,7 +18,7 @@ export async function generateMetadata({ params }) {
   if (!company) return { title: "Not Found" };
   return {
     title: `${company} (${tk}) — BTC Production, Hashrate, Costs`,
-    description: `Detailed operational data for ${company} (${tk}). Data from SEC filings.`,
+    description: `Detailed operational data for ${company} (${tk}). BTC production, hashrate, costs from SEC filings.`,
     alternates: { languages: { en: `/en/company/${tk}`, zh: `/zh/company/${tk}` } },
   };
 }
@@ -41,14 +41,14 @@ export default async function CompanyPage({ params }) {
     .sort((a, b) => a.quarter.localeCompare(b.quarter));
 
   const latest = data[data.length - 1];
-  const color  = TICKER_COLORS[tk] || "#C8922A";
+  const color  = TICKER_COLORS[tk] || "#F7931A";
   const ts     = buildCompanyTimeseries(allData, company);
 
-  // Pass locale — returns profile in correct language, falls back to en
   let profile = null;
   try { profile = await getCompanyProfile(tk, locale); } catch (e) {}
 
-  const profileHtml     = profile?.blocks ? blocksToHtml(profile.blocks) : "";
+  // ★ FIX: blocksToHtml 是 async 函数，必须 await，否则返回 Promise 导致 .split 报错
+  const profileHtml     = profile?.blocks ? await blocksToHtml(profile.blocks) : "";
   const parts           = profileHtml.split("<hr/>");
   const methodologyHtml = parts[0] || "";
   const faqHtml         = parts[1] || "";
@@ -58,7 +58,7 @@ export default async function CompanyPage({ params }) {
 
   return (
     <>
-      <Link href={`/${locale}`} style={{ fontSize:13, color:"var(--text3)" }}>
+      <Link href={`/${locale}`} style={{ fontSize: 13, color: "var(--text3)" }}>
         {t("company.allCompanies")}
       </Link>
 
