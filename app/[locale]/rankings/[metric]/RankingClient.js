@@ -415,7 +415,7 @@ export default function RankingClient({
             {rows.map((r, i) => (
               <tr key={r.ticker || r.company} style={{ opacity: r[meta.field] == null ? 0.35 : 1 }}>
                 <td style={{ color: "var(--text3)", fontFamily: "DM Mono, monospace", fontSize: 12 }}>{i + 1}</td>
-                <td style={{ position: "sticky", left: 0, background: "var(--bg2)", zIndex: 2, minWidth: 140 }}>
+                <td style={{ minWidth: 140 }}>
                   <Link href={`/${locale}/company/${r.ticker}`} className="cl" style={{ color: "var(--text)", fontWeight: 500 }}>
                     {r.company}{r.ticker ? ` (${r.ticker})` : ""}
                   </Link>
@@ -425,7 +425,7 @@ export default function RankingClient({
                 ))}
                 <td style={{ fontSize: 11 }}>
                   {r.source_url
-                    ? <a href={r.source_url} target="_blank" rel="noopener" style={{ color: "var(--text3)" }}>{r.sourceDate || "↗"}</a>
+                    ? <a href={r.source_url} target="_blank" rel="noopener">{r.sourceDate || (locale === "zh" ? "原文" : "Source")}</a>
                     : (r.sourceDate || "—")}
                 </td>
               </tr>

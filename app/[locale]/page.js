@@ -43,25 +43,6 @@ export default async function HomePage({ params }) {
         locale={locale}
       />
 
-      {/* Explore by metric */}
-      <div style={{ marginTop: 48, marginBottom: 16 }}>
-        <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14, color: "var(--text2)" }}>
-          {t("home.exploreTitle")}
-        </h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
-          {["production","hashrate","holdings","cost","efficiency"].map(key => (
-            <Link key={key} href={`/${locale}/rankings/${key}`} className="text-block" style={{ textDecoration: "none", display: "block" }}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", marginBottom: 3 }}>
-                {t(`home.metrics.${key}.label`)} →
-              </div>
-              <div style={{ fontSize: 12, color: "var(--text3)" }}>
-                {t(`home.metrics.${key}.desc`)}
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-
       {/* FAQ — Notion driven, language-filtered */}
       {homeFaqs.length > 0 && (
         <div style={{ marginTop: 40 }}>

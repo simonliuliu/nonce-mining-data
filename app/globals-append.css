@@ -1,0 +1,91 @@
+/* ╔══════════════════════════════════════════════════════════════════╗
+   ║  下面这一整块是新增的，请追加到 globals.css 末尾                  ║
+   ║  不要替换任何已有规则                                            ║
+   ╚══════════════════════════════════════════════════════════════════╝ */
+
+/* ─── Sticky first columns（横向滚动时让关键列保持可见）─── */
+/* 解决：屏幕不够宽时 thead 和 tbody 横向滚动错位的问题
+   规则：
+   - 所有 .table-wrap 表格：第 1 列粘住（Quarter / Metric / # 等）
+   - 列数 ≥ 6 的宽表（首页 / Rankings / Filings）：第 2 列（公司名）也粘住
+   - 用 !important 是为了覆盖现有 JSX 里的 inline style，保持表头和数据行一致 */
+
+.table-wrap thead th:first-child,
+.table-wrap tbody td:first-child {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 2 !important;
+}
+.table-wrap thead th:first-child {
+  background: var(--bg-inset) !important;
+  z-index: 3 !important;
+}
+.table-wrap tbody td:first-child {
+  background: var(--bg2) !important;
+}
+
+/* 宽表（6+ 列）：第 1 列固定 48px 宽，第 2 列粘在 48px 处 */
+.table-wrap:has(thead th:nth-child(6)) thead th:first-child,
+.table-wrap:has(thead th:nth-child(6)) tbody td:first-child {
+  min-width: 48px;
+  width: 48px;
+}
+.table-wrap:has(thead th:nth-child(6)) thead th:nth-child(2),
+.table-wrap:has(thead th:nth-child(6)) tbody td:nth-child(2) {
+  position: sticky !important;
+  left: 48px !important;
+  z-index: 2 !important;
+}
+.table-wrap:has(thead th:nth-child(6)) thead th:nth-child(2) {
+  background: var(--bg-inset) !important;
+  z-index: 3 !important;
+}
+.table-wrap:has(thead th:nth-child(6)) tbody td:nth-child(2) {
+  background: var(--bg2) !important;
+}
+
+/* 滚动时给粘住的列加一条右侧分界线，避免和后面的列糊在一起 */
+.table-wrap thead th:first-child,
+.table-wrap tbody td:first-child {
+  box-shadow: 1px 0 0 var(--border);
+}
+.table-wrap:has(thead th:nth-child(6)) thead th:nth-child(2),
+.table-wrap:has(thead th:nth-child(6)) tbody td:nth-child(2) {
+  box-shadow: 1px 0 0 var(--border);
+}
+
+/* ─── 表格里的外部链接（Source 列）— 让它们看起来可点击 ─── */
+/* 现有 JSX 写法：<a href={r.source_url} target="_blank" rel="noopener">2026Q1</a>
+   这条 CSS 自动捕获所有 td 里的 target=_blank 链接，加上箭头图标和 hover 效果 */
+
+td a[target="_blank"] {
+  color: var(--text2);
+  text-decoration: none;
+  position: relative;
+  padding-right: 14px;
+  transition: color 0.15s;
+  display: inline-flex;
+  align-items: center;
+}
+
+td a[target="_blank"]::after {
+  content: "↗";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  opacity: 0.5;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+td a[target="_blank"]:hover {
+  color: var(--orange, #F7931A);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+td a[target="_blank"]:hover::after {
+  opacity: 1;
+  transform: translateY(-50%) translate(1px, -1px);
+}
