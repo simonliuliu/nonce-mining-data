@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, ResponsiveContainer, Cell } from "recharts";
 import Link from "next/link";
 import MultiColorBar from "@/components/MultiColorBar";
+import SourcesTooltip from "@/components/SourcesTooltip";
 import { getT } from "@/lib/i18n";
 
 const TICKER_COLORS = {
@@ -218,7 +219,11 @@ export default function HomeClient({ enrichedByQuarter = {}, quarters = [], late
                   <td className="r m">{r.power_capacity_mw ? r.power_capacity_mw.toLocaleString() : "—"}</td>
                   <td className="r m">{r.efficiency_jth || "—"}</td>
                   <td style={{ fontSize: 11 }}>
-                    {r.source_url ? <a href={r.source_url} target="_blank" rel="noopener">{r.sourceDate || (locale === "zh" ? "原文" : "Source")}</a> : (r.sourceDate || "—")}
+                    <SourcesTooltip
+                      sources={r.sources || (r.source_url ? [r.source_url] : [])}
+                      quarter={r.sourceDate || r.quarter}
+                      locale={locale}
+                    />
                   </td>
                 </tr>
               );

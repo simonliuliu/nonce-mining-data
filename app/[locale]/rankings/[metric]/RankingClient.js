@@ -10,6 +10,7 @@ import Link from "next/link";
 import { getT } from "@/lib/i18n";
 import MultiColorBar from "@/components/MultiColorBar";
 import { PALETTE } from "@/components/MultiColorBar";
+import SourcesTooltip from "@/components/SourcesTooltip";
 
 // 折线图使用低饱和度协调色板，与柱状图统一风格
 const LINE_PALETTE = [
@@ -424,9 +425,11 @@ export default function RankingClient({
                   <td key={ci} className={`${c.right ? "r" : ""} m ${c.cls ? c.cls(r) : ""}`}>{c.render(r)}</td>
                 ))}
                 <td style={{ fontSize: 11 }}>
-                  {r.source_url
-                    ? <a href={r.source_url} target="_blank" rel="noopener">{r.sourceDate || (locale === "zh" ? "原文" : "Source")}</a>
-                    : (r.sourceDate || "—")}
+                  <SourcesTooltip
+                    sources={r.sources || (r.source_url ? [r.source_url] : [])}
+                    quarter={r.sourceDate || r.quarter}
+                    locale={locale}
+                  />
                 </td>
               </tr>
             ))}
