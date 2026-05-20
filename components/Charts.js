@@ -130,31 +130,62 @@ export function CompanyHashrateChart({ data, color }) {
 }
 
 // ─── Cost ─────────────────────────────────────────────────────
+// 同量纲双柱图：cash cost / BTC 和 energy cost / BTC 并排展示
+// 两柱用同色不同透明度，配合自定义 Legend 让图例和柱子视觉完全一致
+//
+// 自定义 Legend：手动画出色块，应用与 Bar 一致的 fillOpacity
+// （recharts 默认 Legend 忽略 Bar 的 fillOpacity，所以图例看起来同色）
+function CostChartLegend({ color }) {
+  const item = (label, opacity) => (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "#9b9b9b" }}>
+      <span style={{
+        display: "inline-block",
+        width: 14,
+        height: 14,
+        background: color,
+        opacity,
+        borderRadius: 2,
+      }} />
+      {label}
+    </span>
+  );
+  return (
+    <div style={{
+      display: "flex",
+      justifyContent: "center",
+      gap: 24,
+      paddingTop: 8,
+    }}>
+      {item("Cash cost/BTC",   0.85)}
+      {item("Energy cost/BTC", 0.45)}
+    </div>
+  );
+}
+
 export function CompanyCostChart({ data, color }) {
   return (
-    <W title="Cash cost per BTC" height={240}>
-      <ComposedChart data={data} barCategoryGap="25%">
+    <W title="Cash cost & energy cost per BTC" height={240}>
+      <ComposedChart data={data} barCategoryGap="25%" barGap={2}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
         <XAxis dataKey="quarter" tick={ax} axisLine={false} tickLine={false} />
         <YAxis tick={ax} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
         <Tooltip content={<Tip />} cursor={false} />
-        <Legend wrapperStyle={{ fontSize: 11, color: "#9b9b9b" }} />
+        <Legend content={<CostChartLegend color={color} />} />
         <Bar
           dataKey="cash_cost"
           name="Cash cost/BTC"
           fill={color}
-          fillOpacity={0.75}
+          fillOpacity={0.85}
           radius={[2, 2, 0, 0]}
           maxBarSize={MAX_BAR}
         />
-        <Line
-          type="monotone"
-          dataKey="all_in_cost"
-          name="All-in cost/BTC"
-          stroke="rgba(255,255,255,0.3)"
-          strokeWidth={1.5}
-          dot={{ r: 2 }}
-          connectNulls
+        <Bar
+          dataKey="energy_cost"
+          name="Energy cost/BTC"
+          fill={color}
+          fillOpacity={0.45}
+          radius={[2, 2, 0, 0]}
+          maxBarSize={MAX_BAR}
         />
       </ComposedChart>
     </W>
@@ -162,18 +193,17 @@ export function CompanyCostChart({ data, color }) {
 }
 
 // ─── Efficiency ───────────────────────────────────────────────
+// 单一指标：fleet efficiency (J/TH)。原 Miners 柱图已移除。
 export function CompanyEfficiencyChart({ data, color }) {
   return (
     <W title="Fleet efficiency (J/TH)" height={220}>
-      <ComposedChart data={data} barCategoryGap="25%">
+      <ComposedChart data={data}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
         <XAxis dataKey="quarter" tick={ax} axisLine={false} tickLine={false} />
-        <YAxis yAxisId="left"  tick={ax} axisLine={false} tickLine={false} />
-        <YAxis yAxisId="right" orientation="right" tick={ax} axisLine={false} tickLine={false} />
+        <YAxis tick={ax} axisLine={false} tickLine={false} />
         <Tooltip content={<Tip />} cursor={false} />
         <Legend wrapperStyle={{ fontSize: 11, color: "#9b9b9b" }} />
         <Line
-          yAxisId="left"
           type="monotone"
           dataKey="efficiency"
           name="J/TH"
@@ -181,14 +211,6 @@ export function CompanyEfficiencyChart({ data, color }) {
           strokeWidth={2}
           dot={{ r: 2.5 }}
           connectNulls
-        />
-        <Bar
-          yAxisId="right"
-          dataKey="miner_count"
-          name="Miners"
-          fill="rgba(255,255,255,0.08)"
-          radius={[2, 2, 0, 0]}
-          maxBarSize={MAX_BAR}
         />
       </ComposedChart>
     </W>
