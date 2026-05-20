@@ -219,7 +219,7 @@ function buildCards(metric, enrichedByQuarter, cur, locale) {
     case "production": {
       const isZh = locale === "zh";
       return [
-        { label: `${isZh?"BTC 总产量":"Total BTC mined"} (${lq})`, value: fN(sum(lqRows,"btc_production")), pct: pct(sum(lqRows,"btc_production"),sum(lq2Rows,"btc_production")), pctSuffix: isZh?"较上季度":(locale==="zh"?"较上季度":"vs prev quarter"), color: "var(--brand)" },
+        { label: `${isZh?"BTC 总产量":"Total BTC Production"} (${lq})`, value: fN(sum(lqRows,"btc_production")), pct: pct(sum(lqRows,"btc_production"),sum(lq2Rows,"btc_production")), pctSuffix: isZh?"较上季度":(locale==="zh"?"较上季度":"vs prev quarter"), color: "var(--brand)" },
         { label: isZh?"产量最高":"Top producer", value: top(lqRows,"btc_production")?.ticker||"—", sub: top(lqRows,"btc_production") ? fN(top(lqRows,"btc_production").btc_production)+" BTC" : null },
         { label: isZh?"平均产量":"Avg production", value: fN(avg(lqRows,"btc_production")), pct: pct(avg(lqRows,"btc_production"),avg(lq2Rows,"btc_production")), pctSuffix: isZh?"较上季度":(locale==="zh"?"较上季度":"vs prev quarter") },
         { label: isZh?"披露数据的公司":(locale==="zh"?"披露数据的公司":"Companies reporting"), value: lqRows.filter(r=>r.btc_production>0).length, sub: lq },
