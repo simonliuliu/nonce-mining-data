@@ -85,13 +85,59 @@ function Pct({ v }) {
   return <span style={{ color: c, fontFamily: "DM Mono, monospace", fontSize: 12 }}>{v > 0 ? "+" : ""}{v.toFixed(1)}%</span>;
 }
 
-function Th({ children, tip, right }) {
+// ─── Sortable Th ────────────────────────────────────────────
+// Props:
+//   tip       — 字符串，hover 显示 tooltip 提示（保留原有功能）
+//   right     — 右对齐
+//   sortKey   — 字符串，传了就表示这一列可排序
+//   sortState — { key, dir }，当前排序状态
+//   onSort    — function(key)，点击列时调用
+function Th({ children, tip, right, sortKey, sortState, onSort }) {
   const [pos, setPos] = useState(null);
+  const sortable = !!sortKey && !!onSort;
+  const isActive = sortable && sortState?.key === sortKey;
+  const arrow    = isActive ? (sortState.dir === "asc" ? "▲" : "▼") : "";
+
+  const handleClick = () => {
+    if (sortable) onSort(sortKey);
+  };
+
   return (
-    <th className={right ? "r" : ""} style={{ cursor: tip ? "help" : "default" }}
+    <th
+      className={right ? "r" : ""}
+      onClick={handleClick}
+      style={{
+        cursor: sortable ? "pointer" : (tip ? "help" : "default"),
+        userSelect: "none",
+        // 激活时整列标题加重颜色
+        color: isActive ? "var(--text)" : undefined,
+      }}
       onMouseEnter={e => { if (tip) { const b = e.currentTarget.getBoundingClientRect(); setPos({ x: b.left + b.width / 2, y: b.top }); } }}
-      onMouseLeave={() => setPos(null)}>
-      <span style={{ borderBottom: tip ? "1px dashed var(--text3)" : "none", paddingBottom: 1 }}>{children}</span>
+      onMouseLeave={() => setPos(null)}
+    >
+      <span style={{
+        borderBottom: tip ? "1px dashed var(--text3)" : "none",
+        paddingBottom: 1,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+      }}>
+        {children}
+        {sortable && (
+          <span style={{
+            fontSize: 9,
+            color: isActive ? "var(--orange, #F7931A)" : "var(--text3)",
+            opacity: isActive ? 1 : 0.4,
+            fontFamily: "DM Mono, monospace",
+            // 占位防止激活/未激活时宽度跳动
+            minWidth: 8,
+            display: "inline-block",
+            textAlign: "center",
+          }}>
+            {arrow || "▾"}
+          </span>
+        )}
+      </span>
       {pos && tip && <div style={{ position: "fixed", left: pos.x, top: pos.y - 8, transform: "translate(-50%,-100%)", background: "#191919", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--text2)", width: 230, lineHeight: 1.5, zIndex: 9999, boxShadow: "0 12px 32px rgba(0,0,0,.6)", whiteSpace: "normal", fontWeight: 400, pointerEvents: "none" }}>{tip}</div>}
     </th>
   );
@@ -122,6 +168,47 @@ export default function HomeClient({ enrichedByQuarter = {}, quarters = [], late
 
   const { price: btcSpotPrice, supply: btcSupply } = useLiveBtcPrice();
 
+  // ─── 排序状态 ──────────────────────────────────────────────
+  // 默认按 BTC 产量降序
+  const [sortState, setSortState] = useState({ key: "btc_production", dir: "desc" });
+
+  // 点击列标题：同一列 → 切换方向；切换列 → 默认降序
+  const handleSort = (key) => {
+    setSortState(prev => {
+      if (prev.key === key) return { key, dir: prev.dir === "desc" ? "asc" : "desc" };
+      return { key, dir: "desc" };
+    });
+  };
+
+  // 对当前 rows 排序
+  // 规则：
+  //   - 有数据的行排前面，null 值始终排到最后（不参与升降序）
+  //   - company 列按字符串比较
+  //   - 其他列按数字比较
+  const sortedRows = useMemo(() => {
+    const { key, dir } = sortState;
+    const sign = dir === "asc" ? 1 : -1;
+
+    const isString = key === "company";
+
+    return [...rows].sort((a, b) => {
+      const av = a[key];
+      const bv = b[key];
+
+      // null/undefined 永远排到最后
+      const aNull = av == null || av === "";
+      const bNull = bv == null || bv === "";
+      if (aNull && bNull) return 0;
+      if (aNull) return 1;
+      if (bNull) return -1;
+
+      if (isString) {
+        return String(av).localeCompare(String(bv)) * sign;
+      }
+      return (Number(av) - Number(bv)) * sign;
+    });
+  }, [rows, sortState]);
+
   const summary = useMemo(() => {
     const withProd = rows.filter(r => r.btc_production != null);
     const withCost = rows.filter(r => r.cash_cost_per_btc != null && r.cash_cost_per_btc > 0);
@@ -137,7 +224,8 @@ export default function HomeClient({ enrichedByQuarter = {}, quarters = [], late
   const profitPct = (btcSpotPrice && summary.avgCost) ? ((btcSpotPrice - summary.avgCost) / btcSpotPrice) * 100 : null;
   const holdPct   = (summary.totalHeld && btcSupply) ? (summary.totalHeld / btcSupply) * 100 : null;
 
-  const chartRows = useMemo(() => rows.map((r, i) => ({ ...r, color: TICKER_COLORS[r.ticker] || PAL[i % PAL.length] })), [cur, rows]);
+  // chartRows 用 sortedRows 保证图表跟表格顺序一致
+  const chartRows = useMemo(() => sortedRows.map((r, i) => ({ ...r, color: TICKER_COLORS[r.ticker] || PAL[i % PAL.length] })), [cur, sortedRows]);
 
   return (
     <>
@@ -184,21 +272,21 @@ export default function HomeClient({ enrichedByQuarter = {}, quarters = [], late
         <table style={{ minWidth: 1160 }}>
           <thead><tr>
             <Th>#</Th>
-            <Th>{t("table.company")}</Th>
-            <Th tip={t("tooltips.btcMined")} right>{t("table.btcMined")}</Th>
-            <Th tip={t("tooltips.qoq")} right>{t("table.qoq")}</Th>
-            <Th tip={t("tooltips.yoy")} right>{t("table.yoy")}</Th>
-            <Th tip={t("tooltips.btcHeld")} right>{t("table.btcHeld")}</Th>
-            <Th tip={t("tooltips.hashrate")} right>{t("table.hashrate")}</Th>
-            <Th tip={t("tooltips.elecPrice")} right>{t("table.elecPrice")}</Th>
-            <Th tip={t("tooltips.cashCost")} right>{t("table.cashCost")}</Th>
-            <Th tip={t("tooltips.energyCost")} right>{t("table.energyCost")}</Th>
-            <Th tip={t("tooltips.powerMW")} right>{t("table.powerMW")}</Th>
-            <Th tip={t("tooltips.jth")} right>{t("table.jth")}</Th>
+            <Th sortKey="company"             sortState={sortState} onSort={handleSort}>{t("table.company")}</Th>
+            <Th sortKey="btc_production"      sortState={sortState} onSort={handleSort} tip={t("tooltips.btcMined")}   right>{t("table.btcMined")}</Th>
+            <Th sortKey="qoqProd"             sortState={sortState} onSort={handleSort} tip={t("tooltips.qoq")}        right>{t("table.qoq")}</Th>
+            <Th sortKey="yoyProd"             sortState={sortState} onSort={handleSort} tip={t("tooltips.yoy")}        right>{t("table.yoy")}</Th>
+            <Th sortKey="btc_holdings"        sortState={sortState} onSort={handleSort} tip={t("tooltips.btcHeld")}    right>{t("table.btcHeld")}</Th>
+            <Th sortKey="hashrate_ehs"        sortState={sortState} onSort={handleSort} tip={t("tooltips.hashrate")}   right>{t("table.hashrate")}</Th>
+            <Th sortKey="electricity_price"   sortState={sortState} onSort={handleSort} tip={t("tooltips.elecPrice")}  right>{t("table.elecPrice")}</Th>
+            <Th sortKey="cash_cost_per_btc"   sortState={sortState} onSort={handleSort} tip={t("tooltips.cashCost")}   right>{t("table.cashCost")}</Th>
+            <Th sortKey="energy_cost_per_btc" sortState={sortState} onSort={handleSort} tip={t("tooltips.energyCost")} right>{t("table.energyCost")}</Th>
+            <Th sortKey="power_capacity_mw"   sortState={sortState} onSort={handleSort} tip={t("tooltips.powerMW")}    right>{t("table.powerMW")}</Th>
+            <Th sortKey="efficiency_jth"      sortState={sortState} onSort={handleSort} tip={t("tooltips.jth")}        right>{t("table.jth")}</Th>
             <Th tip={t("tooltips.source")}>{t("table.source")}</Th>
           </tr></thead>
           <tbody>
-            {rows.map((r, i) => {
+            {sortedRows.map((r, i) => {
               const hasData = r.btc_production != null;
               return (
                 <tr key={r.ticker || r.company} style={{ opacity: hasData ? 1 : 0.35 }}>
