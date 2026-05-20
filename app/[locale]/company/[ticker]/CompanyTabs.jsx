@@ -8,6 +8,7 @@ import {
   CompanyEfficiencyChart,
 } from "@/components/Charts";
 import Link from "next/link";
+import SourcesTooltip from "@/components/SourcesTooltip";
 
 // ─── 数字格式化 ────────────────────────────────────────────────
 const fmt  = v => v == null ? "—" : typeof v === "number" ? v.toLocaleString() : v;
@@ -250,6 +251,7 @@ export default function CompanyTabs({
                   <th className="r">{t("company.table.btcMined")}</th>
                   <th className="r">{t("company.table.holdings")}</th>
                   <th className="r">{t("company.table.hashrate")}</th>
+                  <th className="r">{t("company.table.elecPrice")}</th>
                   <th className="r">{t("company.table.cashCost")}</th>
                   <th className="r">{t("company.table.energyCost")}</th>
                   <th className="r">{t("company.table.powerMW")}</th>
@@ -269,18 +271,17 @@ export default function CompanyTabs({
                       <td className="r m">{fmt(r.btc_production)}</td>
                       <td className="r m">{fmt(r.btc_holdings)}</td>
                       <td className="r m">{r.hashrate_ehs ? `${r.hashrate_ehs} EH/s` : "—"}</td>
+                      <td className="r m">{r.electricity_price ? `$${r.electricity_price}` : "—"}</td>
                       <td className="r m">{r.cash_cost_per_btc ? fmtD(r.cash_cost_per_btc) : "—"}</td>
                       <td className="r m">{r.energy_cost_per_btc ? fmtD(r.energy_cost_per_btc) : "—"}</td>
                       <td className="r m">{r.power_capacity_mw ? r.power_capacity_mw.toLocaleString() : "—"}</td>
                       <td className="r m">{r.efficiency_jth || "—"}</td>
                       <td style={{ fontSize: 12 }}>
-                        {r.source_url ? (
-                          <a href={r.source_url} target="_blank" rel="noopener" style={{ color }}>
-                            {sd || r.quarter}
-                          </a>
-                        ) : (
-                          sd || "—"
-                        )}
+                        <SourcesTooltip
+                          sources={r.sources || (r.source_url ? [r.source_url] : [])}
+                          quarter={sd || r.quarter}
+                          locale={locale}
+                        />
                       </td>
                     </tr>
                   );

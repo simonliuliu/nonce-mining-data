@@ -1,5 +1,5 @@
 import { getQuarterlyData, getCompanyProfile, getPublishedArticles, blocksToHtml } from "@/lib/notion";
-import { TICKERS, TICKER_COLORS, buildCompanyTimeseries } from "@/lib/helpers";
+import { TICKER_COLORS, buildCompanyTimeseries } from "@/lib/helpers";
 import { getT } from "@/lib/i18n";
 import CompanyTabs from "./CompanyTabs";
 import CompanyLogoHeader from "./CompanyLogoHeader";
@@ -8,13 +8,43 @@ import { notFound } from "next/navigation";
 
 export const revalidate = 3600;
 
-const T2C = {};
-Object.entries(TICKERS).forEach(([company, ticker]) => { T2C[ticker] = company; });
+// ─── 从 Notion 数据动态查找公司 ────────────────────────────────────
+// 多策略匹配 ticker，不依赖任何硬编码列表，新增公司无需改代码。
+//
+// 匹配策略（按优先级）：
+//   1. 精确匹配 r.ticker === tk
+//   2. 大小写归一化匹配 r.ticker?.toUpperCase() === tk
+//   3. 公司名子串匹配（处理 ticker 字段未填的边缘情况）
+async function resolveCompany(tk) {
+  const allData = await getQuarterlyData();
+
+  // 策略 1 & 2：ticker 字段匹配
+  let row = allData.find(r => r.ticker?.toUpperCase() === tk);
+
+  // 策略 3：如果数据里 ticker 字段缺失，从公司名包含 tk 来反查
+  // 比如某行 ticker 是空但 company="American Bitcoin"，URL 是 /ABTC
+  if (!row) {
+    row = allData.find(r =>
+      r.company?.toUpperCase().includes(tk) ||
+      tk.includes((r.ticker || "").toUpperCase())
+    );
+  }
+
+  // 调试日志（开发时排查 404 用，生产环境不影响）
+  if (!row) {
+    const allTickers = [...new Set(allData.map(r => r.ticker).filter(Boolean))].sort();
+    console.warn(`[company-page] ticker "${tk}" not found in Notion data.`);
+    console.warn(`[company-page] Available tickers in data: ${allTickers.join(", ")}`);
+  }
+
+  return { company: row?.company || null, allData };
+}
 
 export async function generateMetadata({ params }) {
   const { ticker, locale } = await params;
   const tk = ticker?.toUpperCase();
-  const company = T2C[tk];
+  if (!tk) return { title: "Not Found" };
+  const { company } = await resolveCompany(tk);
   if (!company) return { title: "Not Found" };
   return {
     title: `${company} (${tk}) — BTC Production, Hashrate, Costs`,
@@ -24,50 +54,43 @@ export async function generateMetadata({ params }) {
 }
 
 // ─── 相关文章过滤辅助 ──────────────────────────────────────────
-// 同时匹配 ticker（BTDR）和公司名（Bitdeer），并按 locale 过滤
 function filterRelatedArticles(articles, ticker, companyName, locale) {
-  const tkUp   = ticker.toUpperCase();
-  const cnUp   = companyName.toUpperCase();
+  const tkUp = ticker.toUpperCase();
+  const cnUp = (companyName || "").toUpperCase();
 
   return articles.filter(a => {
-    // 1. 按 locale 过滤：article.language === locale，或没标 language（兼容旧数据）
     if (a.language && a.language !== locale) return false;
-
-    // 2. 按 related_company 匹配（同时支持字符串和数组两种 Notion 字段类型）
     const rc = a.related_company;
     if (!rc) return false;
-
     const rcList = Array.isArray(rc) ? rc : [rc];
     return rcList.some(v => {
       const upper = String(v).toUpperCase();
-      // 命中任一关键词即可：ticker (BTDR) 或公司名 (BITDEER, BITDEER TECHNOLOGIES 等)
-      return upper.includes(tkUp) || upper.includes(cnUp) || cnUp.includes(upper);
+      return upper.includes(tkUp) || (cnUp && (upper.includes(cnUp) || cnUp.includes(upper)));
     });
   });
 }
 
 export default async function CompanyPage({ params }) {
   const { ticker, locale } = await params;
-  const tk      = ticker?.toUpperCase();
-  const company = T2C[tk];
-  if (!company) notFound();
+  const tk = ticker?.toUpperCase();
+  if (!tk) notFound();
 
   const t = getT(locale);
 
-  const [allData, articles] = await Promise.all([
-    getQuarterlyData(),
-    getPublishedArticles().catch(() => []),
-  ]);
+  const { company, allData } = await resolveCompany(tk);
+  if (!company) notFound();
 
+  const articles = await getPublishedArticles().catch(() => []);
+
+  // 用 ticker 和公司名双重匹配，保证拿到所有该公司的季度数据
   const data = allData
-    .filter(r => r.company === company || r.ticker === tk)
+    .filter(r => r.company === company || r.ticker?.toUpperCase() === tk)
     .sort((a, b) => a.quarter.localeCompare(b.quarter));
 
   const latest = data[data.length - 1];
   const color  = TICKER_COLORS[tk] || "#F7931A";
   const ts     = buildCompanyTimeseries(allData, company);
 
-  // ★ 关键：传 locale，让 Notion 优先返回中文 profile（如有）
   let profile = null;
   try { profile = await getCompanyProfile(tk, locale); } catch (e) {}
 
@@ -76,7 +99,6 @@ export default async function CompanyPage({ params }) {
   const methodologyHtml = parts[0] || "";
   const faqHtml         = parts[1] || "";
 
-  // ★★★ 修复后的相关文章过滤 ★★★
   const related = filterRelatedArticles(articles, tk, company, locale);
 
   const peers = profile?.peers?.split(",").map(p => p.trim()).filter(p => p && p !== tk) || [];
