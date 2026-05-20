@@ -76,10 +76,17 @@ function PctBadge({ v, suffix }) {
 }
 
 // ─── Th ──────────────────────────────────────────────────────
-function Th({ children, tip, right }) {
+function Th({ children, tip, right, stickyLeft }) {
   const [pos, setPos] = useState(null);
+  const stickyStyle = stickyLeft != null ? {
+    position: "sticky",
+    left: stickyLeft,
+    zIndex: 3,
+    background: "var(--bg-inset)",
+    boxShadow: "1px 0 0 var(--border, rgba(255,255,255,0.08))",
+  } : {};
   return (
-    <th className={right ? "r" : ""} style={{ cursor: tip ? "help" : "default" }}
+    <th className={right ? "r" : ""} style={{ cursor: tip ? "help" : "default", ...stickyStyle }}
       onMouseEnter={e => { if (tip) { const b = e.currentTarget.getBoundingClientRect(); setPos({ x: b.left + b.width / 2, y: b.top }); } }}
       onMouseLeave={() => setPos(null)}>
       <span style={{ borderBottom: tip ? "1px dashed var(--text3)" : "none", paddingBottom: 1 }}>{children}</span>
@@ -406,8 +413,8 @@ export default function RankingClient({
         <table style={{ minWidth: Math.max(600, cols.length * 110 + 220) }}>
           <thead>
             <tr>
-              <Th>#</Th>
-              <Th>Company</Th>
+              <Th stickyLeft={0}>#</Th>
+              <Th stickyLeft={44}>Company</Th>
               {cols.map((c, i) => <Th key={i} tip={c.tip} right={c.right}>{c.label}</Th>)}
               <Th tip="Source filing.">Source</Th>
             </tr>
@@ -415,8 +422,26 @@ export default function RankingClient({
           <tbody>
             {rows.map((r, i) => (
               <tr key={r.ticker || r.company} style={{ opacity: r[meta.field] == null ? 0.35 : 1 }}>
-                <td style={{ color: "var(--text3)", fontFamily: "DM Mono, monospace", fontSize: 12 }}>{i + 1}</td>
-                <td style={{ minWidth: 140 }}>
+                <td style={{
+                  color: "var(--text3)",
+                  fontFamily: "DM Mono, monospace",
+                  fontSize: 12,
+                  position: "sticky",
+                  left: 0,
+                  zIndex: 1,
+                  background: "var(--bg2)",
+                  minWidth: 44,
+                  width: 44,
+                  boxShadow: "1px 0 0 var(--border, rgba(255,255,255,0.08))",
+                }}>{i + 1}</td>
+                <td style={{
+                  minWidth: 140,
+                  position: "sticky",
+                  left: 44,
+                  zIndex: 1,
+                  background: "var(--bg2)",
+                  boxShadow: "1px 0 0 var(--border, rgba(255,255,255,0.08))",
+                }}>
                   <Link href={`/${locale}/company/${r.ticker}`} className="cl" style={{ color: "var(--text)", fontWeight: 500 }}>
                     {r.company}{r.ticker ? ` (${r.ticker})` : ""}
                   </Link>

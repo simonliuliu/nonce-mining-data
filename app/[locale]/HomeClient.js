@@ -87,12 +87,13 @@ function Pct({ v }) {
 
 // ─── Sortable Th ────────────────────────────────────────────
 // Props:
-//   tip       — 字符串，hover 显示 tooltip 提示（保留原有功能）
-//   right     — 右对齐
-//   sortKey   — 字符串，传了就表示这一列可排序
-//   sortState — { key, dir }，当前排序状态
-//   onSort    — function(key)，点击列时调用
-function Th({ children, tip, right, sortKey, sortState, onSort }) {
+//   tip        — hover 显示 tooltip 提示
+//   right      — 右对齐
+//   sortKey    — 传了就表示该列可排序
+//   sortState  — { key, dir }
+//   onSort     — function(key)
+//   stickyLeft — 数字，表示该列水平滚动时粘住，距 wrap 左侧 px 数（0 = 最左，48 = 第二列粘在 48px 处）
+function Th({ children, tip, right, sortKey, sortState, onSort, stickyLeft }) {
   const [pos, setPos] = useState(null);
   const sortable = !!sortKey && !!onSort;
   const isActive = sortable && sortState?.key === sortKey;
@@ -102,6 +103,16 @@ function Th({ children, tip, right, sortKey, sortState, onSort }) {
     if (sortable) onSort(sortKey);
   };
 
+  // 粘住列的样式：固定 left + 提升 z-index + 设置背景（避免下层透过来）
+  // thead 默认背景是 var(--bg-inset)，与非粘住的表头单元格保持一致
+  const stickyStyle = stickyLeft != null ? {
+    position: "sticky",
+    left: stickyLeft,
+    zIndex: 3,
+    background: "var(--bg-inset)",
+    boxShadow: "1px 0 0 var(--border, rgba(255,255,255,0.08))",
+  } : {};
+
   return (
     <th
       className={right ? "r" : ""}
@@ -109,8 +120,8 @@ function Th({ children, tip, right, sortKey, sortState, onSort }) {
       style={{
         cursor: sortable ? "pointer" : (tip ? "help" : "default"),
         userSelect: "none",
-        // 激活时整列标题加重颜色
         color: isActive ? "var(--text)" : undefined,
+        ...stickyStyle,
       }}
       onMouseEnter={e => { if (tip) { const b = e.currentTarget.getBoundingClientRect(); setPos({ x: b.left + b.width / 2, y: b.top }); } }}
       onMouseLeave={() => setPos(null)}
@@ -129,7 +140,6 @@ function Th({ children, tip, right, sortKey, sortState, onSort }) {
             color: isActive ? "var(--orange, #F7931A)" : "var(--text3)",
             opacity: isActive ? 1 : 0.4,
             fontFamily: "DM Mono, monospace",
-            // 占位防止激活/未激活时宽度跳动
             minWidth: 8,
             display: "inline-block",
             textAlign: "center",
@@ -271,8 +281,8 @@ export default function HomeClient({ enrichedByQuarter = {}, quarters = [], late
       <div className="table-wrap" style={{ marginBottom: 40 }}>
         <table style={{ minWidth: 1160 }}>
           <thead><tr>
-            <Th>#</Th>
-            <Th sortKey="company"             sortState={sortState} onSort={handleSort}>{t("table.company")}</Th>
+            <Th stickyLeft={0}>#</Th>
+            <Th stickyLeft={44} sortKey="company"             sortState={sortState} onSort={handleSort}>{t("table.company")}</Th>
             <Th sortKey="btc_production"      sortState={sortState} onSort={handleSort} tip={t("tooltips.btcMined")}   right>{t("table.btcMined")}</Th>
             <Th sortKey="qoqProd"             sortState={sortState} onSort={handleSort} tip={t("tooltips.qoq")}        right>{t("table.qoq")}</Th>
             <Th sortKey="yoyProd"             sortState={sortState} onSort={handleSort} tip={t("tooltips.yoy")}        right>{t("table.yoy")}</Th>
@@ -290,8 +300,26 @@ export default function HomeClient({ enrichedByQuarter = {}, quarters = [], late
               const hasData = r.btc_production != null;
               return (
                 <tr key={r.ticker || r.company} style={{ opacity: hasData ? 1 : 0.35 }}>
-                  <td style={{ color: "var(--text3)", fontFamily: "DM Mono, monospace", fontSize: 12 }}>{i + 1}</td>
-                  <td style={{ minWidth: 160 }}>
+                  <td style={{
+                    color: "var(--text3)",
+                    fontFamily: "DM Mono, monospace",
+                    fontSize: 12,
+                    position: "sticky",
+                    left: 0,
+                    zIndex: 1,
+                    background: "var(--bg2)",
+                    minWidth: 44,
+                    width: 44,
+                    boxShadow: "1px 0 0 var(--border, rgba(255,255,255,0.08))",
+                  }}>{i + 1}</td>
+                  <td style={{
+                    minWidth: 160,
+                    position: "sticky",
+                    left: 44,
+                    zIndex: 1,
+                    background: "var(--bg2)",
+                    boxShadow: "1px 0 0 var(--border, rgba(255,255,255,0.08))",
+                  }}>
                     <Link href={`/${locale}/company/${r.ticker}`} className="cl" style={{ color: "var(--text)", fontWeight: 500 }}>
                       {r.company}{r.ticker ? ` (${r.ticker})` : ""}
                     </Link>

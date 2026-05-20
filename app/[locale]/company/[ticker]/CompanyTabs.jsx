@@ -177,43 +177,49 @@ export default function CompanyTabs({
       {active === "market" && (
         <div style={{ paddingTop: 20 }}>
 
-          {/* Key metrics cards */}
+          {/* Key metrics cards
+              数字底对齐方案：每个 card 用 flex column，metric-value 推到底部
+              这样不论 label 长短或换行，所有 value 始终对齐在卡片同一基线 */}
           <div className="metric-grid">
-            <div className="metric-card">
-              <div className="metric-label">
-                {t("company.fields.btcMined")} ({latest?.quarter})
-              </div>
+            <div className="metric-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: 96 }}>
+              <div className="metric-label">{t("company.fields.btcMined")}</div>
               <div className="metric-value" style={{ color }}>
                 {fmt(latest?.btc_production)}
               </div>
+              <div className="metric-sub" style={{ fontSize: 11, color: "var(--text3)", marginTop: 4 }}>{latest?.quarter}</div>
             </div>
-            <div className="metric-card">
+            <div className="metric-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: 96 }}>
               <div className="metric-label">{t("company.fields.holdings")}</div>
               <div className="metric-value">{fmt(latest?.btc_holdings)}</div>
+              <div className="metric-sub" style={{ fontSize: 11, color: "var(--text3)", marginTop: 4 }}>{latest?.quarter}</div>
             </div>
-            <div className="metric-card">
+            <div className="metric-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: 96 }}>
               <div className="metric-label">{t("company.fields.hashrate")}</div>
               <div className="metric-value">
                 {latest?.hashrate_ehs ? `${latest.hashrate_ehs} EH/s` : "—"}
               </div>
+              <div className="metric-sub" style={{ fontSize: 11, color: "var(--text3)", marginTop: 4 }}>{latest?.quarter}</div>
             </div>
-            <div className="metric-card">
+            <div className="metric-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: 96 }}>
               <div className="metric-label">{t("company.fields.cashCost")}</div>
               <div className="metric-value">
                 {latest?.cash_cost_per_btc ? fmtD(latest.cash_cost_per_btc) : "—"}
               </div>
+              <div className="metric-sub" style={{ fontSize: 11, color: "var(--text3)", marginTop: 4 }}>{latest?.quarter}</div>
             </div>
-            <div className="metric-card">
+            <div className="metric-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: 96 }}>
               <div className="metric-label">{t("company.fields.power")}</div>
               <div className="metric-value">
                 {latest?.power_capacity_mw ? `${latest.power_capacity_mw.toLocaleString()} MW` : "—"}
               </div>
+              <div className="metric-sub" style={{ fontSize: 11, color: "var(--text3)", marginTop: 4 }}>{latest?.quarter}</div>
             </div>
-            <div className="metric-card">
+            <div className="metric-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: 96 }}>
               <div className="metric-label">{t("company.fields.efficiency")}</div>
               <div className="metric-value">
                 {latest?.efficiency_jth ? `${latest.efficiency_jth} J/TH` : "—"}
               </div>
+              <div className="metric-sub" style={{ fontSize: 11, color: "var(--text3)", marginTop: 4 }}>{latest?.quarter}</div>
             </div>
           </div>
 
@@ -247,7 +253,13 @@ export default function CompanyTabs({
             <table>
               <thead>
                 <tr>
-                  <th>{t("company.table.quarter")}</th>
+                  <th style={{
+                    position: "sticky",
+                    left: 0,
+                    zIndex: 3,
+                    background: "var(--bg-inset)",
+                    boxShadow: "1px 0 0 var(--border, rgba(255,255,255,0.08))",
+                  }}>{t("company.table.quarter")}</th>
                   <th className="r">{t("company.table.btcMined")}</th>
                   <th className="r">{t("company.table.holdings")}</th>
                   <th className="r">{t("company.table.hashrate")}</th>
@@ -267,7 +279,14 @@ export default function CompanyTabs({
 
                   return (
                     <tr key={r.quarter}>
-                      <td style={{ fontWeight: 500 }}>{r.quarter}</td>
+                      <td style={{
+                        fontWeight: 500,
+                        position: "sticky",
+                        left: 0,
+                        zIndex: 1,
+                        background: "var(--bg2)",
+                        boxShadow: "1px 0 0 var(--border, rgba(255,255,255,0.08))",
+                      }}>{r.quarter}</td>
                       <td className="r m">{fmt(r.btc_production)}</td>
                       <td className="r m">{fmt(r.btc_holdings)}</td>
                       <td className="r m">{r.hashrate_ehs ? `${r.hashrate_ehs} EH/s` : "—"}</td>
@@ -311,27 +330,22 @@ export default function CompanyTabs({
             gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
             gap: 12,
           }}>
-            {/* Overview */}
-            {profile?.description && (
-              <div className="text-block">
+            {/* 公司简介（合并自原 Overview + Business Model）*/}
+            {(profile?.description || profile?.business_model) && (
+              <div className="text-block" style={{ gridColumn: "span 2", minWidth: 0 }}>
                 <SectionLabel small style={{ margin: "0 0 10px" }}>
                   {t("company.sections.overview")}
                 </SectionLabel>
-                <p style={{ margin: 0, lineHeight: 1.75, fontSize: 14 }}>
-                  {profile.description}
-                </p>
-              </div>
-            )}
-
-            {/* Business Model */}
-            {profile?.business_model && (
-              <div className="text-block">
-                <SectionLabel small style={{ margin: "0 0 10px" }}>
-                  {t("company.sections.bizModel")}
-                </SectionLabel>
-                <p style={{ margin: 0, lineHeight: 1.75, fontSize: 14 }}>
-                  {profile.business_model}
-                </p>
+                {profile?.description && (
+                  <p style={{ margin: 0, lineHeight: 1.75, fontSize: 14 }}>
+                    {profile.description}
+                  </p>
+                )}
+                {profile?.business_model && (
+                  <p style={{ margin: profile?.description ? "12px 0 0" : 0, lineHeight: 1.75, fontSize: 14 }}>
+                    {profile.business_model}
+                  </p>
+                )}
               </div>
             )}
 
@@ -360,27 +374,6 @@ export default function CompanyTabs({
               </div>
             )}
           </div>
-
-          {/* Peers — 紧凑放在 quick facts 下方 */}
-          {peers.length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              <SectionLabel small style={{ margin: "0 0 10px" }}>
-                {t("company.sections.peers")}
-              </SectionLabel>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {peers.map(p => (
-                  <Link
-                    key={p}
-                    href={`/${locale}/company/${p}`}
-                    className="tag"
-                    style={{ padding: "6px 14px" }}
-                  >
-                    {p}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* ════════════════════════════════════
               下半部分：Related Research 文章
