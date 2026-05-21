@@ -6,6 +6,61 @@ import Link from "next/link";
 
 export const revalidate = 3600;
 
+// ─── 首页 SEO metadata ──────────────────────────────────────
+//
+// 文案改动入口：lib/i18n.js → seo.home.title / seo.home.desc
+// 双语自动切换：访问 /en 显示英文 title，/zh 显示中文 title
+//
+// 注意：Next.js 的 metadata 是"浅合并"——page 层一旦设了 openGraph 或 twitter，
+// 就会完全替换 layout 层的同名对象。所以这里需要把 layout 已经设的字段
+// （images / locale / siteName / card 类型）显式重申一次。
+
+export async function generateMetadata({ params }) {
+  const { locale } = await params;
+  const t = getT(locale);
+
+  const title = t("seo.home.title");
+  const desc  = t("seo.home.desc");
+  const path  = `/${locale}`;
+
+  return {
+    title,
+    description: desc,
+
+    alternates: {
+      canonical: path,
+      languages: {
+        en:          "/en",
+        zh:          "/zh",
+        "x-default": "/en",
+      },
+    },
+
+    openGraph: {
+      title,
+      description: desc,
+      url:         path,
+      type:        "website",
+      siteName:    t("seo.siteName"),
+      locale:      locale === "zh" ? "zh_CN" : "en_US",
+      images: [{
+        url: "/og-default.png",
+        width: 1200,
+        height: 630,
+        alt: title,
+      }],
+    },
+
+    twitter: {
+      card:        "summary_large_image",   // 必须显式指定，否则会回退到 summary
+      title,
+      description: desc,
+      site:        "@hash_res",
+      images:      ["/og-default.png"],
+    },
+  };
+}
+
 export default async function HomePage({ params }) {
   const { locale } = await params;
   const t = getT(locale);

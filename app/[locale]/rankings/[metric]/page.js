@@ -1,8 +1,9 @@
 import { getQuarterlyData } from "@/lib/notion";
 import { TICKER_COLORS, PALETTE, getQuarters, enrichRows, getCompanies, find } from "@/lib/helpers";
 import { getT, LOCALES } from "@/lib/i18n";
+import { JsonLd, breadcrumbSchema } from "@/lib/seo";
 import RankingClient from "./RankingClient";
-import RankingNavStrip from "../RankingNavStrip"; // ← 한 단계 위
+import RankingNavStrip from "../RankingNavStrip";
 import { notFound } from "next/navigation";
 
 export const revalidate = 3600;
@@ -46,11 +47,60 @@ function buildSummary(rows, field, sortAsc) {
   return { total, avg:total/vals.length, count:vals.length, topTicker:sorted[0]?.ticker||"—", topValue:sorted[0]?.[field] };
 }
 
+// ─── 排行榜 SEO metadata ─────────────────────────────────────
+//
+// 文案改动入口：lib/i18n.js → seo.rankings.{metric}.title / desc
+// 5 个 metric (production/hashrate/holdings/cost/efficiency) 各自一组文案
+//
+// 关键修复：
+//   ❌ 旧版：只设了 title，没设 description / canonical / og 等
+//   ✅ 新版：完整 metadata + alternates + og + twitter
+
 export async function generateMetadata({ params }) {
   const { locale, metric } = await params;
+  if (!FIELD_MAP[metric]) return { title: "Not Found" };
+
   const t = getT(locale);
-  if (!FIELD_MAP[metric]) return { title:"Not Found" };
-  return { title: t(`rankings.${metric}.fullTitle`) };
+  const title = t(`seo.rankings.${metric}.title`);
+  const desc  = t(`seo.rankings.${metric}.desc`);
+  const path  = `/${locale}/rankings/${metric}`;
+
+  return {
+    title,
+    description: desc,
+
+    alternates: {
+      canonical: path,
+      languages: {
+        en: `/en/rankings/${metric}`,
+        zh: `/zh/rankings/${metric}`,
+        "x-default": `/en/rankings/${metric}`,
+      },
+    },
+
+    openGraph: {
+      title,
+      description: desc,
+      url:         path,
+      type:        "website",
+      siteName:    t("seo.siteName"),
+      locale:      locale === "zh" ? "zh_CN" : "en_US",
+      images: [{
+        url: "/og-default.png",
+        width: 1200,
+        height: 630,
+        alt: title,
+      }],
+    },
+
+    twitter: {
+      card:        "summary_large_image",
+      title,
+      description: desc,
+      site:        "@hash_res",
+      images:      ["/og-default.png"],
+    },
+  };
 }
 
 export default async function RankingPage({ params }) {
@@ -79,8 +129,18 @@ export default async function RankingPage({ params }) {
   const enrichedByQuarter = {};
   for (const q of quarters) enrichedByQuarter[q] = enrichRows(data, q);
 
+  // ─── 面包屑结构化数据 ───────────────────────────────────
+  // 让搜索结果显示 "HashResearch › 排行榜 › BTC 产量" 导航
+  const breadcrumbData = breadcrumbSchema([
+    { name: locale === "zh" ? "首页" : "Home",         url: `/${locale}` },
+    { name: locale === "zh" ? "排行榜" : "Rankings",   url: `/${locale}/rankings/production` },
+    { name: t(`rankings.${metric}.title`),              url: `/${locale}/rankings/${metric}` },
+  ]);
+
   return (
     <>
+      <JsonLd data={breadcrumbData} />
+
       <RankingNavStrip locale={locale} activeMetric={metric} />
       <RankingClient
         metric={metric}

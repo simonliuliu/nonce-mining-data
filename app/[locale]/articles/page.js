@@ -1,11 +1,68 @@
 import { getPublishedArticles } from "@/lib/notion";
+import { getT } from "@/lib/i18n";
+import { JsonLd, breadcrumbSchema } from "@/lib/seo";
 import Link from "next/link";
 
 export const revalidate = 3600;
 
+// ─── 研究文章列表 SEO metadata ───────────────────────────────
+//
+// 文案改动入口：lib/i18n.js → seo.articlesList.title / desc
+//
+// 关键修复：
+//   ❌ 旧版：完全没有 generateMetadata，标签显示 "HashResearch - Bitcoin Mining Data"
+//   ✅ 新版：专属 title/desc + canonical + alternates + BreadcrumbList schema
+
+export async function generateMetadata({ params }) {
+  const { locale } = await params;
+  const t = getT(locale);
+
+  const title = t("seo.articlesList.title");
+  const desc  = t("seo.articlesList.desc");
+  const path  = `/${locale}/articles`;
+
+  return {
+    title,
+    description: desc,
+
+    alternates: {
+      canonical: path,
+      languages: {
+        en:          "/en/articles",
+        zh:          "/zh/articles",
+        "x-default": "/en/articles",
+      },
+    },
+
+    openGraph: {
+      title,
+      description: desc,
+      url:         path,
+      type:        "website",
+      siteName:    t("seo.siteName"),
+      locale:      locale === "zh" ? "zh_CN" : "en_US",
+      images: [{
+        url: "/og-default.png",
+        width: 1200,
+        height: 630,
+        alt: title,
+      }],
+    },
+
+    twitter: {
+      card:        "summary_large_image",
+      title,
+      description: desc,
+      site:        "@hash_res",
+      images:      ["/og-default.png"],
+    },
+  };
+}
+
 export default async function ArticlesPage({ params }) {
   const { locale } = await params;
   const isZh = locale === "zh";
+  const t    = getT(locale);
 
   let articles = [];
   try { articles = await getPublishedArticles(); } catch (e) {}
@@ -14,7 +71,6 @@ export default async function ArticlesPage({ params }) {
   //   - language === locale → 显示
   //   - language 为空（旧数据，未打标签）→ 显示（兼容旧内容）
   //   - language 是其他语言 → 不显示
-  // 注意：不再有"没有结果就显示全部"的回退逻辑，避免中文文章出现在英文页面
   const display = articles.filter(a => !a.language || a.language === locale);
 
   // 按 category 分组
@@ -26,8 +82,16 @@ export default async function ArticlesPage({ params }) {
   }
   const hasCategories = Object.keys(grouped).length > 1;
 
+  // ─── 面包屑结构化数据 ───────────────────────────────────
+  const breadcrumbData = breadcrumbSchema([
+    { name: isZh ? "首页" : "Home",       url: `/${locale}` },
+    { name: isZh ? "研究" : "Research",   url: `/${locale}/articles` },
+  ]);
+
   return (
     <>
+      <JsonLd data={breadcrumbData} />
+
       <nav style={{ fontSize: 12, color: "var(--text3)", marginBottom: 20 }}>
         <Link href={`/${locale}`}>{isZh ? "首页" : "Home"}</Link>
         <span style={{ margin: "0 6px" }}>›</span>

@@ -1,5 +1,6 @@
 import { getQuarterlyData } from "@/lib/notion";
 import { getT, LOCALES } from "@/lib/i18n";
+import { JsonLd, breadcrumbSchema } from "@/lib/seo";
 import CompareSelector from "./CompareSelector";
 
 export const revalidate = 3600;
@@ -13,6 +14,60 @@ const INCLUDED = [
   { en: "Fleet Efficiency (J/TH)",zh: "机队能效（J/TH）" },
   { en: "Power Capacity (MW)",    zh: "电力规模（MW）" },
 ];
+
+// ─── Compare 入口页 SEO metadata ─────────────────────────────
+//
+// 文案改动入口：lib/i18n.js → seo.compareIntro.title / desc
+//
+// 关键修复：
+//   ❌ 旧版：没有 generateMetadata，完全靠 layout 兜底
+//   ✅ 新版：完整 metadata + canonical + alternates
+
+export async function generateMetadata({ params }) {
+  const { locale } = await params;
+  const t = getT(locale);
+
+  const title = t("seo.compareIntro.title");
+  const desc  = t("seo.compareIntro.desc");
+  const path  = `/${locale}/compare`;
+
+  return {
+    title,
+    description: desc,
+
+    alternates: {
+      canonical: path,
+      languages: {
+        en:          "/en/compare",
+        zh:          "/zh/compare",
+        "x-default": "/en/compare",
+      },
+    },
+
+    openGraph: {
+      title,
+      description: desc,
+      url:         path,
+      type:        "website",
+      siteName:    t("seo.siteName"),
+      locale:      locale === "zh" ? "zh_CN" : "en_US",
+      images: [{
+        url: "/og-default.png",
+        width: 1200,
+        height: 630,
+        alt: title,
+      }],
+    },
+
+    twitter: {
+      card:        "summary_large_image",
+      title,
+      description: desc,
+      site:        "@hash_res",
+      images:      ["/og-default.png"],
+    },
+  };
+}
 
 export default async function CompareLandingPage({ params }) {
   const { locale } = await params;
@@ -29,10 +84,16 @@ export default async function CompareLandingPage({ params }) {
     .sort((a, b) => (b.btc_production || 0) - (a.btc_production || 0))
     .map(r => ({ ticker: r.ticker, company: r.company }));
 
-  // 只传序列化安全的数据给 Client Component（字符串、数组、对象）
-  // 不传函数！
+  // ─── 面包屑结构化数据 ──────────────────────────────────
+  const breadcrumbData = breadcrumbSchema([
+    { name: locale === "zh" ? "首页" : "Home",      url: `/${locale}` },
+    { name: t("nav.compare"),                       url: `/${locale}/compare` },
+  ]);
+
   return (
     <>
+      <JsonLd data={breadcrumbData} />
+
       <div style={{ marginBottom: 28 }}>
         <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>
           {t("nav.compare")}
@@ -51,7 +112,6 @@ export default async function CompareLandingPage({ params }) {
         </div>
         {companies.length >= 2
           ? (
-            // 只传 locale（字符串）和 companies（数组），不传函数
             <CompareSelector
               companies={companies}
               locale={locale}

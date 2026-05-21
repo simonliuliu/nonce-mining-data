@@ -1,44 +1,62 @@
 // app/[locale]/layout.js
 // ✅ 不包含 <html><body>（由根 layout 提供）
 // ✅ 不 import globals.css（根 layout 已引入）
-// ✅ 负责：导航、主内容区、页脚、语言切换
+// ✅ 负责：导航、主内容区、页脚、语言切换、全站 SEO schema、双语兜底 metadata
 
 import Link from "next/link";
 import NavBrand from "../NavBrand";
 import LangSwitcher from "./LangSwitcher";
 import { getT, isValidLocale, LOCALES } from "@/lib/i18n";
+import { JsonLd, websiteSchema, canonicalUrl } from "@/lib/seo";
 import { notFound } from "next/navigation";
 
 export async function generateStaticParams() {
   return LOCALES.map(locale => ({ locale }));
 }
 
+// ─── 语言层兜底 metadata ──────────────────────────────────────
+//
+// 重要修复：移除原来错误的 alternates.canonical 设置
+// 之前所有页面 canonical 都被强制设为 /en 或 /zh，盖住了子页自己的设置
+// 现在 canonical 由每个 page.js 自己声明
+//
+// 这里只声明：
+//   - 站点级 title default + template（被子 page 覆盖）
+//   - 双语 description 兜底
+//   - OpenGraph siteName / locale / 默认图
+//   - Twitter card 类型
+//   - languages 跨语言映射（hreflang 全站统一）
+
 export async function generateMetadata({ params }) {
   const { locale } = await params;
-  const isZh = locale === "zh";
+  const t = getT(locale);
 
   return {
     title: {
-      default: isZh
-        ? "HashResearch - 比特币挖矿数据"
-        : "HashResearch - Bitcoin Mining Data",
-      template: isZh ? "%s — HashResearch" : "%s — HashResearch",
+      default: t("seo.defaultTitle"),
+      template: `%s — ${t("seo.siteName")}`,
     },
-    description: isZh
-      ? "追踪上市比特币矿企，对比 BTC 产量、BTC 持仓、平均运营算力、电力规模、矿机效率与单币成本，数据来源包括 SEC 文件、公司公告与投资者材料。"
-      : "Track publicly listed Bitcoin mining companies. Compare BTC production, BTC holdings, average operational hashrate, power capacity, fleet efficiency and unit costs. Data sourced from SEC filings, company announcements and investor materials.",
+    description: t("seo.defaultDesc"),
+
     openGraph: {
-      siteName: "HashResearch",
+      siteName: t("seo.siteName"),
       type: "website",
-      locale: isZh ? "zh_CN" : "en_US",
+      locale: locale === "zh" ? "zh_CN" : "en_US",
       images: [{ url: "/og-default.png", width: 1200, height: 630 }],
     },
-    twitter: { card: "summary_large_image" },
+    twitter: {
+      card: "summary_large_image",
+      site: "@hash_res",
+    },
+
+    // hreflang：告诉搜索引擎中英文版互为译本
+    // 这里只设语言层的兜底（指向各 locale 的首页）
+    // 子 page 会用自己的具体 URL 覆盖这个 languages
     alternates: {
-      canonical: `/${locale}`,
       languages: {
-        en: "/en",
-        zh: "/zh",
+        en:          "/en",
+        zh:          "/zh",
+        "x-default": "/en",
       },
     },
   };
@@ -61,6 +79,14 @@ export default async function LocaleLayout({ children, params }) {
 
   return (
     <>
+      {/* ─── 全站结构化数据（每个页面都嵌入）────────────
+          告诉谷歌：
+            - HashResearch 是一个网站（WebSite schema）
+            - HashResearch 是一个组织（Organization schema）
+          这让谷歌可能在搜索结果右侧展示知识面板（带 logo 的卡片）
+          ──────────────────────────────────────────────── */}
+      <JsonLd data={websiteSchema()} />
+
       <nav className="nav">
         <div className="container">
           <div className="nav-inner">

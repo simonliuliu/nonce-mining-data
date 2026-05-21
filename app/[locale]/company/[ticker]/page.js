@@ -1,6 +1,7 @@
 import { getQuarterlyData, getCompanyProfile, getPublishedArticles, blocksToHtml } from "@/lib/notion";
 import { TICKER_COLORS, buildCompanyTimeseries } from "@/lib/helpers";
 import { getT } from "@/lib/i18n";
+import { JsonLd, breadcrumbSchema, organizationSchema, canonicalUrl } from "@/lib/seo";
 import CompanyTabs from "./CompanyTabs";
 import CompanyLogoHeader from "./CompanyLogoHeader";
 import Link from "next/link";
@@ -22,7 +23,6 @@ async function resolveCompany(tk) {
   let row = allData.find(r => r.ticker?.toUpperCase() === tk);
 
   // 策略 3：如果数据里 ticker 字段缺失，从公司名包含 tk 来反查
-  // 比如某行 ticker 是空但 company="American Bitcoin"，URL 是 /ABTC
   if (!row) {
     row = allData.find(r =>
       r.company?.toUpperCase().includes(tk) ||
@@ -30,7 +30,6 @@ async function resolveCompany(tk) {
     );
   }
 
-  // 调试日志（开发时排查 404 用，生产环境不影响）
   if (!row) {
     const allTickers = [...new Set(allData.map(r => r.ticker).filter(Boolean))].sort();
     console.warn(`[company-page] ticker "${tk}" not found in Notion data.`);
@@ -40,16 +39,65 @@ async function resolveCompany(tk) {
   return { company: row?.company || null, allData };
 }
 
+// ─── 公司详情页 SEO metadata ─────────────────────────────────
+//
+// 文案改动入口：lib/i18n.js → seo.company.title / seo.company.desc
+// 模板使用 {company} {ticker} 占位符，运行时替换
+//
+// 关键修复：
+//   ❌ 旧版：description 是英文硬编码，中文页面也显示英文（P0 bug）
+//   ✅ 新版：从 i18n 取文案，自动随 locale 切换中英
+
 export async function generateMetadata({ params }) {
   const { ticker, locale } = await params;
   const tk = ticker?.toUpperCase();
   if (!tk) return { title: "Not Found" };
+
   const { company } = await resolveCompany(tk);
   if (!company) return { title: "Not Found" };
+
+  const t = getT(locale);
+  const path = `/${locale}/company/${tk}`;
+
+  // 使用 i18n 模板，{company} {ticker} 会被替换
+  const title = t("seo.company.title", { company, ticker: tk });
+  const desc  = t("seo.company.desc",  { company, ticker: tk });
+
   return {
-    title: `${company} (${tk}) — BTC Production, Hashrate, Costs`,
-    description: `Detailed operational data for ${company} (${tk}). BTC production, hashrate, costs from SEC filings.`,
-    alternates: { languages: { en: `/en/company/${tk}`, zh: `/zh/company/${tk}` } },
+    title,
+    description: desc,
+
+    alternates: {
+      canonical: path,
+      languages: {
+        en: `/en/company/${tk}`,
+        zh: `/zh/company/${tk}`,
+        "x-default": `/en/company/${tk}`,
+      },
+    },
+
+    openGraph: {
+      title,
+      description: desc,
+      url:         path,
+      type:        "website",
+      siteName:    t("seo.siteName"),
+      locale:      locale === "zh" ? "zh_CN" : "en_US",
+      images: [{
+        url: "/og-default.png",
+        width: 1200,
+        height: 630,
+        alt: title,
+      }],
+    },
+
+    twitter: {
+      card:        "summary_large_image",
+      title,
+      description: desc,
+      site:        "@hash_res",
+      images:      ["/og-default.png"],
+    },
   };
 }
 
@@ -103,8 +151,29 @@ export default async function CompanyPage({ params }) {
 
   const peers = profile?.peers?.split(",").map(p => p.trim()).filter(p => p && p !== tk) || [];
 
+  // ─── 结构化数据 ───────────────────────────────────────────
+  // 两个 schema 注入页面：
+  //   1. Organization：让谷歌知道这是某家公司的页面
+  //   2. BreadcrumbList：让搜索结果显示 "HashResearch › 公司 › MARA" 导航
+  const orgData = organizationSchema({
+    name:         profile?.company || company,
+    ticker:       tk,
+    headquarters: profile?.headquarters,
+    website:      profile?.website,
+    description:  profile?.description,
+  });
+
+  const breadcrumbData = breadcrumbSchema([
+    { name: locale === "zh" ? "首页" : "Home",      url: `/${locale}` },
+    { name: locale === "zh" ? "公司" : "Companies", url: `/${locale}` },
+    { name: `${company} (${tk})`,                    url: `/${locale}/company/${tk}` },
+  ]);
+
   return (
     <>
+      <JsonLd data={orgData} />
+      <JsonLd data={breadcrumbData} />
+
       <Link href={`/${locale}`} style={{ fontSize: 13, color: "var(--text3)" }}>
         {t("company.allCompanies")}
       </Link>

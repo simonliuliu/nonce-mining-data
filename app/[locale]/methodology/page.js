@@ -1,15 +1,59 @@
+import { getT } from "@/lib/i18n";
+import { JsonLd, breadcrumbSchema } from "@/lib/seo";
 import Link from "next/link";
+
+// ─── 方法论页 SEO metadata ───────────────────────────────────
+//
+// 文案改动入口：lib/i18n.js → seo.methodology.title / desc
+//
+// 关键修复：
+//   ❌ 旧版：title 用 "Hash Research"（带空格），全站其他位置是 "HashResearch"
+//   ❌ 旧版：没有 canonical / alternates / og 完整字段
+//   ✅ 新版：使用 i18n.seo，品牌名统一 + 完整 metadata + BreadcrumbList
 
 export async function generateMetadata({ params }) {
   const { locale } = await params;
-  const isZh = locale === "zh";
+  const t = getT(locale);
+
+  const title = t("seo.methodology.title");
+  const desc  = t("seo.methodology.desc");
+  const path  = `/${locale}/methodology`;
+
   return {
-    title: isZh
-      ? "比特币矿企通用数据方法论 — Hash Research"
-      : "Bitcoin Mining Data Methodology — Hash Research",
-    description: isZh
-      ? "了解本网站如何收集、校准和标准化上市比特币矿企数据，包括 BTC 产量、BTC 持仓、算力、电力规模、电价、矿机能效和单币成本等指标。"
-      : "How Hash Research collects, normalizes and publishes Bitcoin mining company data including BTC production, hashrate, costs and power capacity.",
+    title,
+    description: desc,
+
+    alternates: {
+      canonical: path,
+      languages: {
+        en:          "/en/methodology",
+        zh:          "/zh/methodology",
+        "x-default": "/en/methodology",
+      },
+    },
+
+    openGraph: {
+      title,
+      description: desc,
+      url:         path,
+      type:        "article",         // 方法论是说明性文章，用 article 类型
+      siteName:    t("seo.siteName"),
+      locale:      locale === "zh" ? "zh_CN" : "en_US",
+      images: [{
+        url: "/og-default.png",
+        width: 1200,
+        height: 630,
+        alt: title,
+      }],
+    },
+
+    twitter: {
+      card:        "summary_large_image",
+      title,
+      description: desc,
+      site:        "@hash_res",
+      images:      ["/og-default.png"],
+    },
   };
 }
 
@@ -138,8 +182,16 @@ export default async function MethodologyPage({ params }) {
   const metrics = isZh ? METRICS_ZH : METRICS_EN;
   const sources = isZh ? SOURCES_ZH : SOURCES_EN;
 
+  // ─── 面包屑结构化数据 ───────────────────────────────────
+  const breadcrumbData = breadcrumbSchema([
+    { name: isZh ? "首页" : "Home",          url: `/${locale}` },
+    { name: isZh ? "方法论" : "Methodology", url: `/${locale}/methodology` },
+  ]);
+
   return (
     <>
+      <JsonLd data={breadcrumbData} />
+
       <nav style={{ fontSize: 12, color: "var(--text3)", marginBottom: 20 }}>
         <Link href={`/${locale}`}>{isZh ? "首页" : "Home"}</Link>
         <span style={{ margin: "0 6px" }}>›</span>
@@ -153,7 +205,7 @@ export default async function MethodologyPage({ params }) {
         <p style={{ color: "var(--text2)", fontSize: 14, lineHeight: 1.7, marginBottom: 36 }}>
           {isZh
             ? "了解本网站如何收集、校准和标准化上市比特币矿企数据。"
-            : "How Hash Research collects, normalizes and publishes Bitcoin mining company data."}
+            : "How HashResearch collects, normalizes and publishes Bitcoin mining company data."}
         </p>
 
         {/* 指标与定义 */}

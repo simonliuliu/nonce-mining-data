@@ -1,18 +1,76 @@
 import { getArticleBySlug, getPublishedArticles, blocksToHtml } from "@/lib/notion";
+import { JsonLd, articleSchema, breadcrumbSchema, canonicalUrl } from "@/lib/seo";
 import Link from "next/link";
 import TweetLoader from "@/components/TweetLoader";
 import { notFound } from "next/navigation";
 
 export const revalidate = 3600;
 
+// ─── 文章详情页 SEO metadata ─────────────────────────────────
+//
+// 这个页面的 metadata 完全从 Notion 拿（不在代码里写死）:
+//   - title            → Notion 文章 Title 字段
+//   - description      → Notion 文章 Meta Description 字段
+//   - cover_image      → Notion 文章 Cover Image 字段（OG 图）
+//   - publish_date     → Notion 文章 Publish Date 字段
+//
+// 运营在 Notion 里填这些字段即可，无需改代码。
+//
+// 关键修复：
+//   ❌ 旧版：OG type 是默认的 "website"，不利于 Google Discover/News 抓取
+//   ❌ 旧版：没有 OG image，社交分享卡片缺图
+//   ❌ 旧版：没有 Article schema，失去 Article 富摘要机会
+//   ❌ 旧版：没有 published_time 元信息
+//   ✅ 新版：完整 Article schema + OG article + 封面图
+
 export async function generateMetadata({ params }) {
-  const { slug } = await params;
+  const { slug, locale } = await params;
+
   try {
     const a = await getArticleBySlug(slug);
     if (!a) return { title: "Not Found" };
+
+    const path = `/${locale}/articles/${slug}`;
+
+    // OG 图优先用文章封面，没有则用默认图
+    const ogImage = a.cover_image || "/og-default.png";
+
     return {
-      title: a.title,
+      title:       a.title,
       description: a.meta_description,
+
+      alternates: {
+        canonical: path,
+        // 注意：文章详情的 hreflang 只在两种语言版本都存在时才有意义
+        // 简单起见这里只指向当前 locale（避免误指向不存在的另一语言版本）
+        languages: {
+          [locale]: path,
+        },
+      },
+
+      openGraph: {
+        title:       a.title,
+        description: a.meta_description,
+        url:         path,
+        type:        "article",                                   // ★ 关键变更
+        siteName:    "HashResearch",
+        locale:      locale === "zh" ? "zh_CN" : "en_US",
+        images: [{ url: ogImage, width: 1200, height: 630, alt: a.title }],
+
+        // OG article 专属字段（Google Discover / Facebook News Feed 会用）
+        publishedTime: a.publish_date || undefined,
+        authors:       ["HashResearch"],
+        section:       a.category || undefined,
+      },
+
+      twitter: {
+        card:        "summary_large_image",
+        title:       a.title,
+        description: a.meta_description,
+        site:        "@hash_res",
+        creator:     "@hash_res",
+        images:      [ogImage],
+      },
     };
   } catch (e) {
     return { title: "Not Found" };
@@ -38,8 +96,30 @@ export default async function ArticlePage({ params }) {
       .slice(0, 3);
   } catch (e) {}
 
+  // ─── 结构化数据 ───────────────────────────────────────────
+  // 两个 schema 注入文章页：
+  //   1. Article schema：让谷歌识别这是新闻/文章，可能被 Google News / Discover 收录
+  //   2. BreadcrumbList：搜索结果显示 "HashResearch › 研究 › 文章标题" 导航
+  const articleData = articleSchema({
+    title:       article.title,
+    description: article.meta_description,
+    url:         `/${locale}/articles/${slug}`,
+    publishDate: article.publish_date,
+    image:       article.cover_image,
+    locale,
+  });
+
+  const breadcrumbData = breadcrumbSchema([
+    { name: isZh ? "首页" : "Home",      url: `/${locale}` },
+    { name: isZh ? "研究" : "Research",  url: `/${locale}/articles` },
+    { name: article.title,                url: `/${locale}/articles/${slug}` },
+  ]);
+
   return (
     <>
+      <JsonLd data={articleData} />
+      <JsonLd data={breadcrumbData} />
+
       <nav style={{ fontSize: 12, color: "var(--text3)", marginBottom: 20 }}>
         <Link href={`/${locale}`}>{isZh ? "首页" : "Home"}</Link>
         <span style={{ margin: "0 6px" }}>›</span>

@@ -1,6 +1,7 @@
 import { getQuarterlyData } from "@/lib/notion";
 import { TICKER_COLORS, getCompanies } from "@/lib/helpers";
 import { getT, LOCALES } from "@/lib/i18n";
+import { JsonLd, breadcrumbSchema } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -26,11 +27,62 @@ function winner(a, b, lowerBetter=false) {
   return a>b?"a":a<b?"b":null;
 }
 
+// ─── Compare 详情页 SEO metadata ─────────────────────────────
+//
+// 文案改动入口：lib/i18n.js → seo.comparePair.title / desc
+// 模板用 {a} {b} 占位符，运行时替换为具体公司名（如 MARA, CLSK）
+//
+// 关键修复：
+//   ❌ 旧版：title 永远是英文 "X vs Y — Bitcoin Mining Comparison"
+//   ✅ 新版：双语 title + desc，canonical + alternates 全套
+
 export async function generateMetadata({ params }) {
   const { locale, pair } = await params;
   const tickers = pairToTickers(pair);
-  if (!tickers) return { title:"Not Found" };
-  return { title:`${tickers[0]} vs ${tickers[1]} — Bitcoin Mining Comparison` };
+  if (!tickers) return { title: "Not Found" };
+  const [a, b] = tickers;
+
+  const t = getT(locale);
+  const title = t("seo.comparePair.title", { a, b });
+  const desc  = t("seo.comparePair.desc",  { a, b });
+  const path  = `/${locale}/compare/${pair.toLowerCase()}`;
+
+  return {
+    title,
+    description: desc,
+
+    alternates: {
+      canonical: path,
+      languages: {
+        en: `/en/compare/${pair.toLowerCase()}`,
+        zh: `/zh/compare/${pair.toLowerCase()}`,
+        "x-default": `/en/compare/${pair.toLowerCase()}`,
+      },
+    },
+
+    openGraph: {
+      title,
+      description: desc,
+      url:         path,
+      type:        "website",
+      siteName:    t("seo.siteName"),
+      locale:      locale === "zh" ? "zh_CN" : "en_US",
+      images: [{
+        url: "/og-default.png",
+        width: 1200,
+        height: 630,
+        alt: title,
+      }],
+    },
+
+    twitter: {
+      card:        "summary_large_image",
+      title,
+      description: desc,
+      site:        "@hash_res",
+      images:      ["/og-default.png"],
+    },
+  };
 }
 
 export default async function ComparePage({ params }) {
@@ -87,8 +139,17 @@ export default async function ComparePage({ params }) {
     if (w==="a") scores.a++; if (w==="b") scores.b++;
   }
 
+  // ─── 面包屑结构化数据 ───────────────────────────────────
+  const breadcrumbData = breadcrumbSchema([
+    { name: locale === "zh" ? "首页" : "Home",  url: `/${locale}` },
+    { name: t("nav.compare"),                   url: `/${locale}/compare` },
+    { name: `${tkA} vs ${tkB}`,                 url: `/${locale}/compare/${pair.toLowerCase()}` },
+  ]);
+
   return (
     <>
+      <JsonLd data={breadcrumbData} />
+
       <nav style={{ fontSize:12, color:"var(--text3)", marginBottom:20 }}>
         <Link href={`/${locale}`}>{locale==="zh"?"首页":"Home"}</Link>
         <span style={{ margin:"0 6px" }}>›</span>
