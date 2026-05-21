@@ -1,7 +1,7 @@
 import { getQuarterlyData } from "@/lib/notion";
 import { TICKER_COLORS, PALETTE, getQuarters, enrichRows, getCompanies, find } from "@/lib/helpers";
 import { getT, LOCALES } from "@/lib/i18n";
-import { JsonLd, breadcrumbSchema } from "@/lib/seo";
+import { JsonLd, breadcrumbSchema, datasetSchema } from "@/lib/seo";
 import RankingClient from "./RankingClient";
 import RankingNavStrip from "../RankingNavStrip";
 import { notFound } from "next/navigation";
@@ -19,6 +19,36 @@ const FIELD_MAP = {
   holdings:   { field:"btc_holdings",      sortAsc:false, tableCols:["btc_holdings","qoq_hold","btc_production","hashrate_ehs"] },
   cost:       { field:"cash_cost_per_btc", sortAsc:true,  tableCols:["cash_cost_per_btc","energy_cost_per_btc","electricity_price","efficiency_jth","power_capacity_mw","btc_production"] },
   efficiency: { field:"efficiency_jth",    sortAsc:true,  tableCols:["efficiency_jth","cash_cost_per_btc","energy_cost_per_btc","power_capacity_mw","hashrate_ehs","btc_production"] },
+};
+
+// ─── 各 metric 的 AEO 数据集声明信息 ─────────────────────────
+// 用于 datasetSchema()，让 AI 引擎理解"这个排行榜是一个数据集"
+const DATASET_INFO = {
+  production: {
+    name:    { en: "Bitcoin Mining Companies BTC Production Rankings", zh: "比特币矿企 BTC 产量排行数据集" },
+    keywords: ["bitcoin mining", "BTC production", "public miners", "MARA", "CleanSpark", "Riot", "Bitdeer"],
+    variables: ["BTC Production (quarterly)", "QoQ %", "YoY %", "Hashrate (EH/s)", "BTC Holdings"],
+  },
+  hashrate: {
+    name:    { en: "Bitcoin Mining Companies Hashrate Rankings", zh: "比特币矿企算力排行数据集" },
+    keywords: ["bitcoin mining hashrate", "EH/s", "operational hashrate", "MARA", "CleanSpark"],
+    variables: ["Hashrate (EH/s)", "QoQ %", "YoY %", "Power Capacity (MW)", "Fleet Efficiency (J/TH)"],
+  },
+  holdings: {
+    name:    { en: "Bitcoin Mining Companies BTC Treasury Rankings", zh: "比特币矿企 BTC 持仓排行数据集" },
+    keywords: ["bitcoin treasury", "BTC holdings", "corporate bitcoin", "MARA", "balance sheet"],
+    variables: ["BTC Holdings", "QoQ %", "BTC Production", "Hashrate"],
+  },
+  cost: {
+    name:    { en: "Bitcoin Mining Companies Cash Cost per BTC Rankings", zh: "比特币矿企单币现金成本排行数据集" },
+    keywords: ["mining cost", "cash cost per BTC", "production cost", "profitability"],
+    variables: ["Cash Cost per BTC", "Energy Cost per BTC", "Electricity Price", "Fleet Efficiency"],
+  },
+  efficiency: {
+    name:    { en: "Bitcoin Mining Companies Fleet Efficiency Rankings", zh: "比特币矿企矿机能效排行数据集" },
+    keywords: ["mining efficiency", "J/TH", "fleet efficiency", "ASIC efficiency"],
+    variables: ["Fleet Efficiency (J/TH)", "Cash Cost per BTC", "Hashrate", "Power Capacity"],
+  },
 };
 
 function buildBarData(rows, field, sortAsc) {
@@ -47,14 +77,7 @@ function buildSummary(rows, field, sortAsc) {
   return { total, avg:total/vals.length, count:vals.length, topTicker:sorted[0]?.ticker||"—", topValue:sorted[0]?.[field] };
 }
 
-// ─── 排行榜 SEO metadata ─────────────────────────────────────
-//
-// 文案改动入口：lib/i18n.js → seo.rankings.{metric}.title / desc
-// 5 个 metric (production/hashrate/holdings/cost/efficiency) 各自一组文案
-//
-// 关键修复：
-//   ❌ 旧版：只设了 title，没设 description / canonical / og 等
-//   ✅ 新版：完整 metadata + alternates + og + twitter
+// ─── 排行榜 SEO + AEO metadata ───────────────────────────────
 
 export async function generateMetadata({ params }) {
   const { locale, metric } = await params;
@@ -129,8 +152,23 @@ export default async function RankingPage({ params }) {
   const enrichedByQuarter = {};
   for (const q of quarters) enrichedByQuarter[q] = enrichRows(data, q);
 
-  // ─── 面包屑结构化数据 ───────────────────────────────────
-  // 让搜索结果显示 "HashResearch › 排行榜 › BTC 产量" 导航
+  // ─── 结构化数据 ─────────────────────────────────────────
+  // 注入 2 种 schema：
+  //   1. BreadcrumbList - 搜索结果导航
+  //   2. Dataset (★ Pack 6 新增) - 让 AI 引擎识别"这是数据集，可引用"
+  const datasetInfo = DATASET_INFO[metric];
+  const earliestQ   = quarters[0] || "";
+
+  const datasetData = datasetSchema({
+    name:        datasetInfo.name[locale === "zh" ? "zh" : "en"],
+    description: t(`seo.rankings.${metric}.desc`),
+    url:         `/${locale}/rankings/${metric}`,
+    keywords:    datasetInfo.keywords,
+    temporalCoverage: earliestQ && latestQ ? `${earliestQ}/${latestQ}` : undefined,
+    variableMeasured: datasetInfo.variables,
+    locale,
+  });
+
   const breadcrumbData = breadcrumbSchema([
     { name: locale === "zh" ? "首页" : "Home",         url: `/${locale}` },
     { name: locale === "zh" ? "排行榜" : "Rankings",   url: `/${locale}/rankings/production` },
@@ -139,6 +177,7 @@ export default async function RankingPage({ params }) {
 
   return (
     <>
+      <JsonLd data={datasetData} />
       <JsonLd data={breadcrumbData} />
 
       <RankingNavStrip locale={locale} activeMetric={metric} />
