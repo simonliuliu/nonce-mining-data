@@ -421,7 +421,7 @@ export default function RankingClient({
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.ticker || r.company} style={{ opacity: r[meta.field] == null ? 0.35 : 1 }}>
+              <tr key={r.company || r.ticker} style={{ opacity: r[meta.field] == null ? 0.35 : 1 }}>
                 <td style={{
                   color: "var(--text3)",
                   fontFamily: "DM Mono, monospace",
@@ -443,7 +443,7 @@ export default function RankingClient({
                   boxShadow: "1px 0 0 var(--border, rgba(255,255,255,0.08))",
                 }}>
                   <Link href={`/${locale}/company/${r.ticker}`} className="cl" style={{ color: "var(--text)", fontWeight: 500 }}>
-                    {r.company}{r.ticker ? ` (${r.ticker})` : ""}
+                    {r.display_company || r.company}{(r.display_ticker || r.ticker) ? ` (${r.display_ticker || r.ticker})` : ""}
                   </Link>
                 </td>
                 {cols.map((c, ci) => (

@@ -299,7 +299,7 @@ export default function HomeClient({ enrichedByQuarter = {}, quarters = [], late
             {sortedRows.map((r, i) => {
               const hasData = r.btc_production != null;
               return (
-                <tr key={r.ticker || r.company} style={{ opacity: hasData ? 1 : 0.35 }}>
+                <tr key={r.company || r.ticker} style={{ opacity: hasData ? 1 : 0.35 }}>
                   <td style={{
                     color: "var(--text3)",
                     fontFamily: "DM Mono, monospace",
@@ -321,7 +321,7 @@ export default function HomeClient({ enrichedByQuarter = {}, quarters = [], late
                     boxShadow: "1px 0 0 var(--border, rgba(255,255,255,0.08))",
                   }}>
                     <Link href={`/${locale}/company/${r.ticker}`} className="cl" style={{ color: "var(--text)", fontWeight: 500 }}>
-                      {r.company}{r.ticker ? ` (${r.ticker})` : ""}
+                      {r.display_company || r.company}{(r.display_ticker || r.ticker) ? ` (${r.display_ticker || r.ticker})` : ""}
                     </Link>
                   </td>
                   <td className="r m">{r.btc_production != null ? r.btc_production.toLocaleString() : "—"}</td>
